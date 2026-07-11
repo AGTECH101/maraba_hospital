@@ -1,23 +1,34 @@
 services:
   - type: web
     name: maraba-hospital
-    env: php
+    env: docker
     plan: free
+    dockerfilePath: ./Dockerfile
     disk:
       name: sqlite-data
       mountPath: /var/data
       sizeGB: 1
-    buildCommand: |
-      composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-      mkdir -p /var/data
-      touch /var/data/database.sqlite
-      php artisan config:clear
-      php artisan route:cache
-      php artisan view:cache
-      php artisan migrate --force
-      npm install
-      npm run build
-    startCommand: php -S 0.0.0.0:$PORT -t public
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://marabahospital.onrender.com
+      - key: LOG_CHANNEL
+        value: stack
+      - key: DB_CONNECTION
+        value: sqlite
+      - key: DB_DATABASE
+        value: /var/data/database.sqlite
+      - key: CACHE_STORE
+        value: file
+      - key: SESSION_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
     envVars:
       - key: APP_ENV
         value: production

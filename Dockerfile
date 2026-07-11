@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.2-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     libjpeg-dev \
     libfreetype6-dev \
+    npm \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql mbstring zip exif gd intl bcmath xml
 
@@ -20,13 +21,16 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copy existing application files
 COPY . /var/www/html
 
-# Install PHP dependencies (use --no-dev in production)
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev || true
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev || true \
+    && npm install \
+    && npm run build \
+    && mkdir -p /var/data \
+    && touch /var/data/database.sqlite \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/data || true
 
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
+ENV PORT=8000
+EXPOSE 8000
 
-EXPOSE 9000
-CMD ["php-fpm"]
+CMD sh -c "php artisan config:clear && php artisan route:cache && php artisan view:cache && php artisan migrate --force && php artisan serve --host 0.0.0.0 --port ${PORT}"
