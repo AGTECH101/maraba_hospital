@@ -1,0 +1,4 @@
+# Prevent favicon errors
+<Files "favicon.ico">
+    Header set Cache-Control "max-age=31536000"
+</Files>

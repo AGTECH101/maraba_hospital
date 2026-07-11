@@ -1,0 +1,60 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    image: maraba-hospital-app
+    container_name: maraba_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./storage:/var/www/html/storage
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=maraba
+      - DB_USERNAME=maraba
+      - DB_PASSWORD=secret
+    depends_on:
+      - db
+    networks:
+      - maraba_net
+
+  webserver:
+    image: nginx:stable-alpine
+    container_name: maraba_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - maraba_net
+
+  db:
+    image: mysql:8.0
+    container_name: maraba_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: maraba
+      MYSQL_USER: maraba
+      MYSQL_PASSWORD: secret
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - maraba_net
+
+volumes:
+  dbdata:
+
+networks:
+  maraba_net:
+    driver: bridge
