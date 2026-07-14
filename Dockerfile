@@ -58,17 +58,11 @@ RUN php artisan config:cache \
     && php artisan view:cache
 
 # ---- Nginx configuration ----
-# Remove default Nginx config and add our own
 RUN rm /etc/nginx/http.d/default.conf
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 
-# ---- Create startup script to run both PHP-FPM and Nginx ----
-RUN echo '#!/bin/sh\n\
-php-fpm -D\n\
-nginx -g "daemon off;"' > /start.sh && chmod +x /start.sh
-
-# Expose port 80 for HTTP
+# Expose port 80
 EXPOSE 80
 
-# Start both services
-CMD ["/start.sh"]
+# ---- Start both PHP-FPM and Nginx (FIXED) ----
+CMD sh -c "php-fpm -D && nginx -g 'daemon off;'"
