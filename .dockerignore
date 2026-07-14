@@ -15,3 +15,12 @@ bootstrap/cache/*
 *~
 .pytest_cache
 .env
+node_modules
+storage
+bootstrap/cache
+.git
+.env
+*.log
+.DS_Store
+.idea
+.vscode
