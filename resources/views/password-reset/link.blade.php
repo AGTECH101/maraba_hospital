@@ -10,12 +10,20 @@
                 <h2 class="auth-title">Create New Password</h2>
                 <p class="auth-subtitle">Please enter your new password below.</p>
 
-                <div id="resetMessage"></div>
+                @if(session('status'))
+                    <div class="auth-feedback success">{{ session('status') }}</div>
+                @endif
+                @error('email')
+                    <div class="auth-feedback error">{{ $message }}</div>
+                @enderror
 
-                <form id="resetPasswordForm" onsubmit="handleResetPassword(event)">
+                <form id="resetPasswordForm" method="POST" action="{{ route('password.reset') }}">
+                    @csrf
+                    <input type="hidden" name="token" value="{{ $token }}">
+                    <input type="hidden" name="email" value="{{ $email }}">
 
                     <div class="form-floating-custom">
-                        <input type="password" class="form-control" id="newPassword" placeholder=" " required minlength="8">
+                        <input type="password" class="form-control" id="newPassword" name="password" placeholder=" " required minlength="8">
                         <label for="newPassword"><i class="bi bi-lock me-2"></i>New Password</label>
                         <button type="button" class="password-toggle" onclick="togglePassword('newPassword', this)">
                             <i class="bi bi-eye"></i>
@@ -23,7 +31,7 @@
                     </div>
 
                     <div class="form-floating-custom">
-                        <input type="password" class="form-control" id="confirmNewPassword" placeholder=" " required>
+                        <input type="password" class="form-control" id="confirmNewPassword" name="password_confirmation" placeholder=" " required>
                         <label for="confirmNewPassword"><i class="bi bi-lock-fill me-2"></i>Confirm Password</label>
                         <button type="button" class="password-toggle" onclick="togglePassword('confirmNewPassword', this)">
                             <i class="bi bi-eye"></i>

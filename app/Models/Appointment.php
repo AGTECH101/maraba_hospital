@@ -21,6 +21,11 @@ class Appointment extends Model
         'status',
         'confirmation_code',
         'amount',
+        'used_at',
+    ];
+
+    protected $casts = [
+        'used_at' => 'datetime',
     ];
 
     public function user()

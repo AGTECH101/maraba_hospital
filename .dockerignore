@@ -1,0 +1,17 @@
+.git
+.gitignore
+node_modules
+npm-debug.log
+.DS_Store
+.env.local
+.env.*.local
+storage/logs/*
+storage/framework/*
+bootstrap/cache/*
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.pytest_cache
+.env

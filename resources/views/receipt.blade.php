@@ -1,65 +1,104 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Receipt - {{ $transaction->invoice_number }}</title>
+    <title>Receipt</title>
     <style>
-        body { font-family: Arial, sans-serif; color: #222; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .brand { font-size: 20px; font-weight: bold; }
-        .meta { margin-bottom: 16px; }
-        .box { border: 1px solid #eee; padding: 12px; border-radius: 6px; }
-        table { width:100%; border-collapse: collapse; margin-top:12px }
-        th, td { text-align:left; padding:8px; border-bottom:1px solid #f1f1f1 }
-        .total { font-weight: bold; text-align:right; }
-        .verify { margin-top:18px; padding:10px; background:#f7f7f9; border-left:6px solid #007bff }
-        .small { font-size:12px; color:#666 }
+        body { font-family: Arial; margin: 20px; }
+        .center { text-align: center; }
+        .border { border: 1px solid black; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        td, th { border: 1px solid black; padding: 5px; }
+        th { background: #ccc; font-weight: bold; }
+        .bold { font-weight: bold; }
+        .right { text-align: right; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="brand">Maraba Hospital</div>
-        <div class="small">Receipt for appointment payment</div>
+    <div class="center bold" style="font-size: 18px; margin-bottom: 20px;">
+        MARABA HOSPITAL<br>
+        <span style="font-size: 12px;">PAYMENT RECEIPT</span>
     </div>
 
-    <div class="meta box">
-        <div><strong>Invoice:</strong> {{ $transaction->invoice_number }}</div>
-        <div><strong>Transaction Ref:</strong> {{ $transaction->transaction_reference }}</div>
-        <div><strong>Date:</strong> {{ $transaction->created_at->toDayDateTimeString() }}</div>
-    </div>
-
-    <h4>Patient & Appointment</h4>
-    <div class="box">
-        <div><strong>Patient:</strong> {{ $appointment->patient_name }}</div>
-        <div><strong>Email:</strong> {{ $appointment->patient_email ?? 'N/A' }}</div>
-        <div><strong>Phone:</strong> {{ $appointment->patient_phone }}</div>
-        <div><strong>Service:</strong> {{ $appointment->service->name ?? 'N/A' }}</div>
-        <div><strong>Doctor:</strong> {{ $appointment->staffMember->name ?? 'N/A' }}</div>
-        <div><strong>Date / Time:</strong> {{ $appointment->appointment_date }} {{ $appointment->appointment_time }}</div>
-    </div>
-
-    <h4>Payment</h4>
     <table>
-        <thead>
-            <tr><th>Description</th><th>Amount (NGN)</th></tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Appointment: {{ $appointment->service->name ?? 'Service' }}</td>
-                <td>{{ number_format($transaction->amount, 2) }}</td>
-            </tr>
-        </tbody>
-        <tfoot>
-            <tr><td class="total">Total</td><td class="total">{{ number_format($transaction->amount, 2) }}</td></tr>
-        </tfoot>
+        <tr>
+            <td class="bold">Invoice:</td>
+            <td>{{ $transaction->invoice_number }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Reference:</td>
+            <td>{{ $transaction->transaction_reference }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Date:</td>
+            <td>{{ $transaction->created_at->format('d/m/Y H:i') }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Status:</td>
+            <td>{{ strtoupper($transaction->status) }}</td>
+        </tr>
     </table>
 
-    <div class="verify">
-        <div><strong>Verification code:</strong> {{ $transaction->transaction_reference }}</div>
-        <div class="small">Use this code to verify this payment with hospital staff or support.</div>
+    <div class="bold" style="margin-top: 15px;">PATIENT INFORMATION</div>
+    <table>
+        <tr>
+            <td class="bold">Patient:</td>
+            <td>{{ $appointment->patient_name }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Email:</td>
+            <td>{{ $appointment->patient_email ?? 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Phone:</td>
+            <td>{{ $appointment->patient_phone }}</td>
+        </tr>
+    </table>
+
+    <div class="bold" style="margin-top: 15px;">APPOINTMENT DETAILS</div>
+    <table>
+        <tr>
+            <td class="bold">Service:</td>
+            <td>{{ $appointment->service->name ?? 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Doctor/Staff:</td>
+            <td>{{ $appointment->staffMember->name ?? 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Date/Time:</td>
+            <td>{{ $appointment->appointment_date ?? 'N/A' }} {{ $appointment->appointment_time ?? '' }}</td>
+        </tr>
+    </table>
+
+    <div class="bold" style="margin-top: 15px;">PAYMENT BREAKDOWN</div>
+    <table>
+        <tr>
+            <th>Description</th>
+            <th class="right">Amount (NGN)</th>
+        </tr>
+        <tr>
+            <td>{{ $appointment->service->name ?? 'Service' }}</td>
+            <td class="right">{{ number_format($serviceAmount, 2) }}</td>
+        </tr>
+        <tr>
+            <td>Service Charge</td>
+            <td class="right">{{ number_format($serviceCharge, 2) }}</td>
+        </tr>
+        <tr class="bold">
+            <td>TOTAL PAID</td>
+            <td class="right">{{ number_format($transaction->amount, 2) }}</td>
+        </tr>
+    </table>
+
+    <div style="border: 1px solid black; padding: 10px; margin-top: 15px;">
+        <div class="bold">VERIFICATION CODE</div>
+        <div style="font-family: monospace; font-size: 12px; margin-top: 5px;">{{ $transaction->transaction_reference }}</div>
     </div>
 
-    <div class="small" style="margin-top:18px">Thank you for choosing Maraba Hospital.</div>
+    <div class="center" style="margin-top: 20px; font-size: 11px;">
+        Thank you for choosing Maraba Hospital<br>
+        This is an electronically generated receipt
+    </div>
 </body>
 </html>

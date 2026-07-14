@@ -108,11 +108,33 @@
                                 <a href="{{ route('team') }}" class="dropdown-item">Our Team</a>
                                 <a href="{{ route('appointment') }}" class="dropdown-item">Appointment</a>
                                 <a href="/pages-directory" class="dropdown-item">Pages Directory</a>
-                                <a href="{{ route('admin-dashboard') }}" class="dropdown-item">Admin Dashboard</a>
-                                <a href="{{ route('staff-dashboard') }}" class="dropdown-item">Staff Dashboard</a>
+                                {{-- <a href="{{ route('admin-dashboard') }}" class="dropdown-item">Admin Dashboard</a>
+                                <a href="{{ route('staff-dashboard') }}" class="dropdown-item">Staff Dashboard</a> --}}
                             </div>
                         </div>
                         <a href="{{ route('contact') }}" class="nav-item nav-link">Contact</a>
+                        @auth
+    <div class="nav-item dropdown">
+        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle me-1"></i>{{ Auth::user()->name }}
+        </a>
+        <div class="dropdown-menu bg-light m-0">
+            @if(Auth::user()->role === 'admin')
+                <a href="{{ route('admin-dashboard') }}" class="dropdown-item">Admin Dashboard</a>
+            @elseif(in_array(Auth::user()->role, ['doctor', 'technician']))
+                <a href="{{ route('staff-dashboard') }}" class="dropdown-item">Staff Dashboard</a>
+            @endif
+            <form method="POST" action="{{ route('logout') }}" class="m-0">
+                @csrf
+                <button type="submit" class="dropdown-item text-danger">
+                    <i class="bi bi-box-arrow-right me-1"></i>Logout
+                </button>
+            </form>
+        </div>
+    </div>
+@else
+    <a href="{{ route('login') }}" class="nav-item nav-link">Login</a>
+@endauth
                     </div>
                     <div class="ms-auto d-none d-lg-flex">
                         <a class="btn btn-sm-square btn-primary ms-2" href=""><i class="fab fa-facebook-f"></i></a>
@@ -212,6 +234,21 @@
     <script src="{{ asset('lib/easing/easing.min.js') }}"></script>
     <script src="{{ asset('lib/waypoints/waypoints.min.js') }}"></script>
     <script src="{{ asset('lib/counterup/counterup.min.js') }}"></script>
+
+    <!-- Cloudinary SDK for Image Uploads -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+    <script>
+        window.cloudinary = window.cloudinary || {};
+        try {
+            if (window.cloudinary && typeof window.cloudinary.config === 'function') {
+                window.cloudinary.config({
+                    cloud_name: '{{ env("CLOUDINARY_CLOUD_NAME") }}'
+                });
+            }
+        } catch (e) {
+            console.warn('Cloudinary bootstrap skipped:', e);
+        }
+    </script>
 
     <!-- Template Javascript -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>

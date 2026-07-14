@@ -38,7 +38,7 @@ class MonnifyController extends Controller
             $userId = $user->id;
         }
 
-        $serviceCharge = 120;
+        $serviceCharge = 310;
         $totalAmount = round((float) $service->price + $serviceCharge, 2);
 
         $appointment = Appointment::create([
@@ -117,24 +117,58 @@ class MonnifyController extends Controller
 
     public function downloadReceipt($transactionId)
     {
-        $tx = Transaction::with('appointment.service', 'appointment.staffMember')->findOrFail($transactionId);
-        $appt = $tx->appointment;
+        try {
+            $tx = Transaction::with('appointment.service', 'appointment.staffMember')->findOrFail($transactionId);
+            $appt = $tx->appointment;
 
-        $pdf = Pdf::loadView('receipt', ['transaction' => $tx, 'appointment' => $appt]);
+            $amount = (float) $tx->amount;
+            $serviceCharge = 310;
+            $serviceAmount = max(0, round($amount - $serviceCharge, 2));
 
-        return $pdf->download('receipt-' . $tx->invoice_number . '.pdf');
+            $pdf = Pdf::loadView('receipt', [
+                'transaction' => $tx,
+                'appointment' => $appt,
+                'serviceAmount' => $serviceAmount,
+                'serviceCharge' => $serviceCharge,
+            ]);
+
+            // Basic DomPDF settings
+            $pdf->setPaper('a4', 'portrait');
+
+            return $pdf->download('receipt-' . $tx->invoice_number . '.pdf');
+        } catch (\Exception $e) {
+            Log::error('Receipt download error', ['error' => $e->getMessage(), 'transaction_id' => $transactionId]);
+            return response()->json(['error' => 'Failed to generate receipt', 'message' => $e->getMessage()], 500);
+        }
     }
 
     public function downloadReceiptByReference($reference)
     {
-        $tx = Transaction::with('appointment.service', 'appointment.staffMember')
-            ->where('transaction_reference', $reference)
-            ->orWhere('invoice_number', $reference)
-            ->firstOrFail();
+        try {
+            $tx = Transaction::with('appointment.service', 'appointment.staffMember')
+                ->where('transaction_reference', $reference)
+                ->orWhere('invoice_number', $reference)
+                ->firstOrFail();
 
-        $pdf = Pdf::loadView('receipt', ['transaction' => $tx, 'appointment' => $tx->appointment]);
+            $amount = (float) $tx->amount;
+            $serviceCharge = 310;
+            $serviceAmount = max(0, round($amount - $serviceCharge, 2));
 
-        return $pdf->download('receipt-' . $tx->invoice_number . '.pdf');
+            $pdf = Pdf::loadView('receipt', [
+                'transaction' => $tx,
+                'appointment' => $tx->appointment,
+                'serviceAmount' => $serviceAmount,
+                'serviceCharge' => $serviceCharge,
+            ]);
+
+            // Basic DomPDF settings
+            $pdf->setPaper('a4', 'portrait');
+
+            return $pdf->download('receipt-' . $tx->invoice_number . '.pdf');
+        } catch (\Exception $e) {
+            Log::error('Receipt download by reference error', ['error' => $e->getMessage(), 'reference' => $reference]);
+            return response()->json(['error' => 'Failed to generate receipt', 'message' => $e->getMessage()], 500);
+        }
     }
 
     public function getByReference($reference)
@@ -148,7 +182,7 @@ class MonnifyController extends Controller
         }
 
         $amount = (float) $tx->amount;
-        $serviceCharge = 120;
+        $serviceCharge = 310;
         $serviceAmount = max(0, (int) round($amount - $serviceCharge));
 
         return response()->json([
@@ -244,33 +278,34 @@ class MonnifyController extends Controller
     {
         $request->validate(['code' => 'required|string']);
 
-        $code = (string) $request->input('code');
-        // normalize input: trim whitespace and uppercase for consistent lookup
-        $normalized = strtoupper(preg_replace('/\s+/', '', $code));
-
-        // attempt to find appointment by confirmation code (case-insensitive)
-        $appointment = Appointment::with('service', 'staffMember')
-            ->whereRaw('UPPER(REPLACE(confirmation_code, " ", "")) = ?', [$normalized])
-            ->first();
-
-        // if not found, try to find a transaction matching reference or invoice (case-insensitive)
-        if (! $appointment) {
-            $transaction = Transaction::with('appointment.service', 'appointment.staffMember')
-                ->whereRaw('UPPER(REPLACE(transaction_reference, " ", "")) = ?', [$normalized])
-                ->orWhereRaw('UPPER(REPLACE(invoice_number, " ", "")) = ?', [$normalized])
-                ->first();
-
-            $appointment = $transaction?->appointment;
-        }
+        $appointment = $this->resolveAppointment($request->input('code'));
 
         if (! $appointment) {
-            return response()->json(['found' => false, 'message' => 'No appointment found for that verification code.'], 404);
+            return response()->json([
+                'found' => false,
+                'state' => 'invalid',
+                'message' => 'No appointment found for that verification code.',
+            ], 200);
         }
 
-        $transaction = $appointment?->transaction()->first();
+        $transaction = $appointment->transaction()->first();
+        $appointmentDateTime = $this->parseAppointmentDateTime($appointment);
+        $isExpired = $appointmentDateTime !== null && $appointmentDateTime->isPast();
+        $isUsed = ! is_null($appointment->used_at);
+
+        $state = 'valid';
+        if ($isUsed) {
+            $state = 'used';
+        } elseif ($transaction?->status !== 'paid') {
+            $state = 'invalid';
+        } elseif ($isExpired) {
+            $state = 'expired';
+        }
 
         return response()->json([
             'found' => true,
+            'state' => $state,
+            'used_at' => $appointment->used_at?->toISOString(),
             'appointment' => [
                 'confirmation_code' => $appointment->confirmation_code,
                 'patient_name' => $appointment->patient_name,
@@ -289,6 +324,62 @@ class MonnifyController extends Controller
                 'receipt_url' => $transaction ? route('transactions.receipt', ['transaction' => $transaction->id]) : null,
             ],
         ]);
+    }
+
+    public function markAppointmentUsed(Request $request)
+    {
+        $request->validate(['code' => 'required|string']);
+
+        $appointment = $this->resolveAppointment($request->input('code'));
+
+        if (! $appointment) {
+            return response()->json(['message' => 'Appointment not found.'], 404);
+        }
+
+        if (! is_null($appointment->used_at)) {
+            return response()->json(['message' => 'Appointment has already been used.'], 409);
+        }
+
+        $appointment->update(['used_at' => now()]);
+
+        return response()->json(['message' => 'Appointment marked as used.']);
+    }
+
+    protected function resolveAppointment(string $code): ?Appointment
+    {
+        $normalized = strtoupper(preg_replace('/\s+/', '', $code));
+
+        $appointment = Appointment::with('service', 'staffMember')
+            ->whereRaw('UPPER(REPLACE(confirmation_code, " ", "")) = ?', [$normalized])
+            ->first();
+
+        if ($appointment instanceof Appointment) {
+            return $appointment;
+        }
+
+        $transaction = Transaction::with('appointment.service', 'appointment.staffMember')
+            ->whereRaw('UPPER(REPLACE(transaction_reference, " ", "")) = ?', [$normalized])
+            ->orWhereRaw('UPPER(REPLACE(invoice_number, " ", "")) = ?', [$normalized])
+            ->first();
+
+        $appointment = $transaction?->appointment;
+
+        return $appointment instanceof Appointment ? $appointment : null;
+    }
+
+    protected function parseAppointmentDateTime(Appointment $appointment): ?\Illuminate\Support\Carbon
+    {
+        if (! $appointment->appointment_date || ! $appointment->appointment_time) {
+            return null;
+        }
+
+        $timePart = trim((string) explode('-', (string) $appointment->appointment_time)[0]);
+
+        if ($timePart === '') {
+            return null;
+        }
+
+        return \Illuminate\Support\Carbon::parse($appointment->appointment_date . ' ' . $timePart);
     }
 
     public function handleReturn(Request $request)

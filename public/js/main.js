@@ -316,6 +316,88 @@ if (document.readyState === 'loading') {
             reader.readAsDataURL(file);
         };
 
+        window.openAddUserModal = function() {
+            document.getElementById('addUserModalTitle').textContent = 'Create New User';
+            document.getElementById('addUserId').value = '';
+            document.getElementById('addUserName').value = '';
+            document.getElementById('addUserEmail').value = '';
+            document.getElementById('addUserPhone').value = '';
+            document.getElementById('addUserRole').value = 'patient';
+            document.getElementById('addUserPassword').value = '';
+            document.getElementById('addUserImage').value = '';
+            document.getElementById('addUserImagePreview').src = '';
+            document.getElementById('addUserImagePreview').style.display = 'none';
+            document.getElementById('addUserImagePlaceholder').style.display = 'block';
+            new bootstrap.Modal(document.getElementById('addUserModal')).show();
+        };
+
+        window.previewNewUserImage = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('addUserImagePreview');
+                const placeholder = document.getElementById('addUserImagePlaceholder');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                document.getElementById('addUserImage').value = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.saveNewUser = function() {
+            const name = document.getElementById('addUserName').value.trim();
+            const email = document.getElementById('addUserEmail').value.trim();
+            const phone = document.getElementById('addUserPhone').value.trim();
+            const role = document.getElementById('addUserRole').value;
+            const password = document.getElementById('addUserPassword').value;
+            const image = document.getElementById('addUserImage').value || null;
+
+            if (!name || !email || !role || !password) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters');
+                return;
+            }
+
+            const payload = { name, email, phone, role, password, image, is_approved: true };
+
+            fetch('/api/dashboard/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(() => {
+                alert('User created successfully');
+                loadDashboardData();
+                bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
+            })
+            .catch(() => alert('Unable to create user'));
+        };
+
+        window.previewAdminStaffImage_OLD = function(event, previewId) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById(previewId);
+                const hiddenInput = previewId === 'newStaffImagePreview' ? document.getElementById('newStaffImage') : document.getElementById('editStaffImage');
+                if (preview) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                if (hiddenInput) {
+                    hiddenInput.value = e.target.result;
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
         function renderAllSchedules() {
             const tbody = document.getElementById('allSchedulesBody');
             tbody.innerHTML = '';
@@ -1148,27 +1230,6 @@ if (document.readyState === 'loading') {
         else { input.type = 'password'; icon.classList.remove('bi-eye-slash'); icon.classList.add('bi-eye'); }
     };
 
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        window.handleLogin = function(e) {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                body: JSON.stringify({ email, password })
-            }).then(async res => {
-                const result = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(result.message || 'Unable to sign in.');
-                return result;
-            }).then(result => {
-                alert(result.message || 'Signed in successfully.');
-                window.location.href = result.redirect || '/';
-            }).catch(error => alert(error.message || 'Unable to sign in.'));
-        };
-    }
-
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         window.previewProfileImage = function(event) {
@@ -1178,9 +1239,13 @@ if (document.readyState === 'loading') {
             reader.onload = function(e) {
                 const img = document.getElementById('profilePreview');
                 const placeholder = document.getElementById('uploadPlaceholder');
+                const hiddenInput = document.getElementById('profileImageHidden');
                 img.src = e.target.result;
                 img.style.display = 'block';
                 placeholder.style.display = 'none';
+                if (hiddenInput) {
+                    hiddenInput.value = e.target.result;
+                }
             };
             reader.readAsDataURL(file);
         };
@@ -1189,46 +1254,6 @@ if (document.readyState === 'loading') {
             el.classList.add('active');
             el.querySelector('input[type="radio"]').checked = true;
         };
-        window.handleRegister = function(e) {
-            e.preventDefault();
-            const fullName = document.getElementById('fullName').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const terms = document.getElementById('termsCheck').checked;
-            let isValid = true;
-            if (!fullName) { showRegError('fullName', 'Full name is required'); isValid = false; } else { clearRegError('fullName'); }
-            if (!email || !email.includes('@')) { showRegError('email', 'Please enter a valid email address'); isValid = false; } else { clearRegError('email'); }
-            if (!phone || phone.length < 8) { showRegError('phone', 'Please enter a valid phone number'); isValid = false; } else { clearRegError('phone'); }
-            if (password.length < 8) { showRegError('password', 'Password must be at least 8 characters'); isValid = false; } else { clearRegError('password'); }
-            if (password !== confirmPassword) { showRegError('confirmPassword', 'Passwords do not match'); isValid = false; } else { clearRegError('confirmPassword'); }
-            if (!terms) { alert('Please agree to the Terms of Service and Privacy Policy'); isValid = false; }
-            if (!isValid) return;
-            const role = document.querySelector('input[name="role"]:checked').value;
-            const profileImg = document.getElementById('profilePreview').src;
-            fetch('/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                body: JSON.stringify({ name: fullName, email, phone, role, password, password_confirmation: confirmPassword, image: profileImg || null })
-            }).then(async res => {
-                const result = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(result.message || 'Unable to create account.');
-                return result;
-            }).then(result => {
-                alert(result.message || 'Registration successful.');
-                window.location.href = '/login';
-            }).catch(error => alert(error.message || 'Unable to create account.'));
-        };
-        function showRegError(id, msg) {
-            const el = document.getElementById(id); el.classList.add('is-invalid');
-            const existing = el.parentElement.querySelector('.invalid-feedback-custom'); if (existing) existing.remove();
-            const feedback = document.createElement('div'); feedback.className = 'invalid-feedback-custom'; feedback.style.cssText = 'color:#dc3545; font-size:13px; margin-top:4px;'; feedback.textContent = msg; el.parentElement.appendChild(feedback);
-        }
-        function clearRegError(id) {
-            const el = document.getElementById(id); el.classList.remove('is-invalid');
-            const existing = el.parentElement.querySelector('.invalid-feedback-custom'); if (existing) existing.remove();
-        }
     }
 })();
 
@@ -1313,84 +1338,6 @@ if (document.readyState === 'loading') {
     }
 })();
 
-// ============================================================
-//  PASSWORD RESET
-// ============================================================
-(function() {
-    const forgotForm = document.getElementById('forgotPasswordForm');
-    if (forgotForm) {
-        window.handleForgotPassword = function(e) {
-            e.preventDefault();
-            const email = document.getElementById('resetEmail').value.trim();
-            if (!email || !email.includes('@')) { alert('Please enter a valid email address.'); return; }
-            fetch('/api/password/forgot', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            }).then(res => res.json()).then(result => {
-                localStorage.setItem('resetEmail', email);
-                if (result.token) {
-                    window.location.href = '/password-reset-link?token=' + encodeURIComponent(result.token) + '&email=' + encodeURIComponent(email);
-                } else {
-                    alert(result.message || 'Password reset request received.');
-                }
-            }).catch(() => alert('Unable to send password reset request.'));
-        };
-    }
-
-    const resetForm = document.getElementById('resetPasswordForm');
-    if (resetForm) {
-        window.validateToken = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const email = urlParams.get('email');
-            if (!token || !email) {
-                showResetMessage('error', 'Invalid or missing reset token. Please request a new password reset link.');
-                document.getElementById('resetPasswordForm').style.display = 'none';
-                return;
-            }
-            showResetMessage('success', 'Token verified. You can now set a new password.');
-        };
-        function showResetMessage(type, text) {
-            const container = document.getElementById('resetMessage');
-            const className = type === 'success' ? 'success-message' : 'error-message';
-            container.innerHTML = `<div class="${className}">${text}</div>`;
-        }
-        window.handleResetPassword = function(e) {
-            e.preventDefault();
-            const newPass = document.getElementById('newPassword').value;
-            const confirmPass = document.getElementById('confirmNewPassword').value;
-            if (newPass.length < 8) { alert('Password must be at least 8 characters.'); return; }
-            if (newPass !== confirmPass) { alert('Passwords do not match.'); return; }
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const email = urlParams.get('email');
-            if (!token || !email) { alert('Missing token or email.'); return; }
-            fetch('/api/password/reset', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email, token: token, password: newPass, password_confirmation: confirmPass })
-            }).then(res => res.json()).then(result => {
-                if (result.message && result.message.toLowerCase().includes('password has been reset')) {
-                    localStorage.setItem('resetEmail', email);
-                    window.location.href = '/password-reset-confirmation';
-                } else {
-                    alert(result.message || 'Unable to reset password.');
-                }
-            }).catch(() => alert('Unable to reset password.'));
-        };
-        document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('resetPasswordForm')) validateToken();
-        });
-    }
-
-    // Confirmation page – show email
-    if (document.getElementById('displayEmail')) {
-        document.addEventListener('DOMContentLoaded', function() {
-            const email = localStorage.getItem('resetEmail') || 'your account';
-            document.getElementById('displayEmail').textContent = 'for ' + email;
-        });
-    }
-})();
 
 // ============================================================
 //  STAFF DASHBOARD
@@ -1513,80 +1460,3 @@ if (document.readyState === 'loading') {
     }
 })();
 
-// ============================================================
-//  VERIFICATION PORTAL
-// ============================================================
-(function() {
-    if (document.getElementById('verificationForm')) {
-        let appointments = [
-            { code: 'APT-2024-A1B2C3D4', patient: 'Chinonso Okwu', phone: '+2348021234567', email: 'chinonso@example.com', service: 'Blood Test', doctor: 'Dr. James Okafor', date: '2026-07-28', time: '09:00-10:00', status: 'pending', createdAt: '2026-07-20' },
-            { code: 'APT-2024-E5F6G7H8', patient: 'Grace Adebayo', phone: '+2347034567890', email: 'grace@example.com', service: 'Pathology Screening', doctor: 'Dr. Amara Okoro', date: '2025-06-01', time: '11:00-12:00', status: 'pending', createdAt: '2025-05-22' },
-            { code: 'APT-2024-I9J0K1L2', patient: 'Ahmed Bello', phone: '+2348056789012', email: 'ahmed@example.com', service: 'Biochemistry Profile', doctor: 'Dr. James Okafor', date: '2025-04-15', time: '14:00-15:00', status: 'used', createdAt: '2025-04-10' },
-            { code: 'APT-2024-M3N4O5P6', patient: 'Ngozi Eze', phone: '+2347012345678', email: 'ngozi@example.com', service: 'Liver Function Test', doctor: 'Dr. Amara Okoro', date: '2025-03-20', time: '08:00-11:00', status: 'expired', createdAt: '2025-03-15' },
-            { code: 'APT-2024-Z9Y8X7W6', patient: 'Test Patient', phone: '+2348012345678', email: 'test@example.com', service: 'Blood Test', doctor: 'Dr. James Okafor', date: '2027-07-20', time: '09:00-10:00', status: 'pending', createdAt: '2025-06-25' }
-        ];
-        if (!localStorage.getItem('verificationAppointments')) {
-            localStorage.setItem('verificationAppointments', JSON.stringify(appointments));
-        }
-        function getAppointments() { return JSON.parse(localStorage.getItem('verificationAppointments')); }
-        function saveAppointments(apps) { localStorage.setItem('verificationAppointments', JSON.stringify(apps)); }
-
-        window.verifyCode = function(e) {
-            e.preventDefault();
-            const codeInput = document.getElementById('verificationCode').value.trim().toUpperCase();
-            const resultContainer = document.getElementById('resultContainer');
-            const resultContent = document.getElementById('resultContent');
-            if (!codeInput) { alert('Please enter a verification code.'); return; }
-            const apps = getAppointments();
-            const appointment = apps.find(a => a.code === codeInput);
-            if (!appointment) {
-                resultContainer.className = 'verification-result visible result-invalid';
-                resultContent.innerHTML = `<h5><i class="bi bi-x-circle-fill"></i> Invalid Code</h5><p>The verification code you entered does not match any appointment in our system. Please check and try again.</p>`;
-                return;
-            }
-            let statusClass = '', statusText = '', statusBadge = '', canMarkUsed = false;
-            const today = new Date();
-            const appDate = new Date(appointment.date + 'T' + appointment.time.split('-')[0]);
-            const isExpired = appDate < today && appointment.status === 'pending';
-            if (isExpired) { appointment.status = 'expired'; saveAppointments(apps); }
-            switch (appointment.status) {
-                case 'pending': statusClass = 'result-valid'; statusText = 'Valid – Pending'; statusBadge = '<span class="status-badge">Pending</span>'; canMarkUsed = true; break;
-                case 'used': statusClass = 'result-used'; statusText = 'Already Used'; statusBadge = '<span class="status-badge">Used</span>'; break;
-                case 'expired': statusClass = 'result-expired'; statusText = 'Expired'; statusBadge = '<span class="status-badge">Expired</span>'; break;
-                default: statusClass = 'result-invalid'; statusText = 'Unknown Status'; statusBadge = '';
-            }
-            const details = `
-                <div class="detail-row"><span class="detail-label">Verification Code</span><span class="detail-value"><strong>${appointment.code}</strong></span></div>
-                <div class="detail-row"><span class="detail-label">Patient</span><span class="detail-value">${appointment.patient}</span></div>
-                <div class="detail-row"><span class="detail-label">Phone</span><span class="detail-value">${appointment.phone}</span></div>
-                <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${appointment.email}</span></div>
-                <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${appointment.service}</span></div>
-                <div class="detail-row"><span class="detail-label">Doctor</span><span class="detail-value">${appointment.doctor}</span></div>
-                <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value">${appointment.date}</span></div>
-                <div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${appointment.time}</span></div>
-                <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">${statusBadge}</span></div>
-            `;
-            resultContainer.className = `verification-result visible ${statusClass}`;
-            resultContent.innerHTML = `<h5><i class="bi bi-${appointment.status === 'pending' ? 'check-circle-fill' : 'exclamation-circle-fill'}"></i> ${statusText}</h5><div style="margin-top:12px;">${details}</div>${canMarkUsed ? `<button class="btn-mark-used mt-3" onclick="markAsUsed('${appointment.code}')"><i class="bi bi-check2-circle"></i> Mark as Used</button>` : ''}${appointment.status === 'expired' ? '<p class="mt-2 text-danger"><i class="bi bi-clock-history"></i> This appointment has expired and cannot be used.</p>' : ''}${appointment.status === 'used' ? '<p class="mt-2 text-warning"><i class="bi bi-check-circle"></i> This appointment has already been used.</p>' : ''}`;
-        };
-
-        window.markAsUsed = function(code) {
-            if (!confirm('Mark this appointment as used? This action cannot be undone.')) return;
-            const apps = getAppointments();
-            const appointment = apps.find(a => a.code === code);
-            if (appointment && appointment.status === 'pending') {
-                appointment.status = 'used';
-                saveAppointments(apps);
-                document.getElementById('verificationCode').value = code;
-                verifyCode(new Event('submit'));
-                alert('Appointment marked as used successfully.');
-            } else {
-                alert('This appointment cannot be marked as used.');
-            }
-        };
-
-        document.getElementById('verificationCode').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('verificationForm').dispatchEvent(new Event('submit')); }
-        });
-    }
-})();

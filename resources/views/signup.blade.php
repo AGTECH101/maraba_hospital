@@ -4,7 +4,7 @@
 
 @section('page_content')
 
-<x-banner message="Get Resigistered" page="Signup" />
+<x-banner message="Get Registered" page="Signup" />
 
     <!-- ===== REGISTRATION SECTION ===== -->
     <section class="auth-section">
@@ -13,7 +13,12 @@
                 <h2 class="auth-title">Join Maraba Hospital</h2>
                 <p class="auth-subtitle">Already have an account? <a href="{{ route('login') }}">Sign in here</a></p>
 
-                <form id="registerForm" onsubmit="handleRegister(event)">
+                @if(session('status'))
+                    <div class="auth-feedback success">{{ session('status') }}</div>
+                @endif
+
+                <form id="registerForm" method="POST" action="{{ route('signup.post') }}">
+                    @csrf
 
                     <!-- Profile Picture -->
                     <div class="profile-upload-wrapper">
@@ -28,25 +33,29 @@
                             </div>
                         </div>
                         <input type="file" id="profileInput" accept="image/*" onchange="previewProfileImage(event)">
+                        <input type="hidden" name="image" id="profileImageHidden" value="">
                         <small class="profile-upload-hint">Click the circle to upload a profile picture (optional)</small>
                     </div>
 
                     <!-- Full Name -->
                     <div class="form-floating-custom">
-                        <input type="text" class="form-control" id="fullName" placeholder=" " required>
+                        <input type="text" class="form-control" id="fullName" name="name" placeholder=" " value="{{ old('name') }}" required>
                         <label for="fullName"><i class="bi bi-person me-2"></i>Full Name</label>
+                        @error('name')<div class="invalid-feedback-custom" style="color:#dc3545; font-size:13px; margin-top:4px;">{{ $message }}</div>@enderror
                     </div>
 
                     <!-- Email -->
                     <div class="form-floating-custom">
-                        <input type="email" class="form-control" id="email" placeholder=" " required>
+                        <input type="email" class="form-control" id="email" name="email" placeholder=" " value="{{ old('email') }}" required>
                         <label for="email"><i class="bi bi-envelope me-2"></i>Email Address</label>
+                        @error('email')<div class="invalid-feedback-custom" style="color:#dc3545; font-size:13px; margin-top:4px;">{{ $message }}</div>@enderror
                     </div>
 
                     <!-- Phone -->
                     <div class="form-floating-custom">
-                        <input type="tel" class="form-control" id="phone" placeholder=" " required>
+                        <input type="tel" class="form-control" id="phone" name="phone" placeholder=" " value="{{ old('phone') }}" required>
                         <label for="phone"><i class="bi bi-phone me-2"></i>Phone Number</label>
+                        @error('phone')<div class="invalid-feedback-custom" style="color:#dc3545; font-size:13px; margin-top:4px;">{{ $message }}</div>@enderror
                     </div>
 
                     <!-- Role Selection -->
@@ -59,39 +68,26 @@
                             <i class="bi bi-person"></i>
                             <span>Patient</span>
                         </label>
-                        <label class="role-option" onclick="selectRole(this)">
-                            <input type="radio" name="role" value="doctor">
-                            <i class="bi bi-heart-pulse"></i>
-                            <span>Doctor</span>
-                        </label>
-                        <label class="role-option" onclick="selectRole(this)">
-                            <input type="radio" name="role" value="technician">
-                            <i class="bi bi-lungs"></i>
-                            <span>Technician</span>
-                        </label>
-                        <label class="role-option" onclick="selectRole(this)">
-                            <input type="radio" name="role" value="admin">
-                            <i class="bi bi-shield-check"></i>
-                            <span>Admin</span>
-                        </label>
                     </div>
 
                     <!-- Password -->
                     <div class="form-floating-custom">
-                        <input type="password" class="form-control" id="password" placeholder=" " required minlength="8">
+                        <input type="password" class="form-control" id="password" name="password" placeholder=" " required minlength="8">
                         <label for="password"><i class="bi bi-lock me-2"></i>Password</label>
                         <button type="button" class="password-toggle" onclick="togglePassword('password', this)">
                             <i class="bi bi-eye"></i>
                         </button>
+                        @error('password')<div class="invalid-feedback-custom" style="color:#dc3545; font-size:13px; margin-top:4px;">{{ $message }}</div>@enderror
                     </div>
 
                     <!-- Confirm Password -->
                     <div class="form-floating-custom">
-                        <input type="password" class="form-control" id="confirmPassword" placeholder=" " required>
+                        <input type="password" class="form-control" id="confirmPassword" name="password_confirmation" placeholder=" " required>
                         <label for="confirmPassword"><i class="bi bi-lock-fill me-2"></i>Confirm Password</label>
                         <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword', this)">
                             <i class="bi bi-eye"></i>
                         </button>
+                        @error('password_confirmation')<div class="invalid-feedback-custom" style="color:#dc3545; font-size:13px; margin-top:4px;">{{ $message }}</div>@enderror
                     </div>
 
                     <!-- Terms -->
@@ -101,8 +97,8 @@
                     </div>
 
                     <!-- Submit -->
-                    <button type="submit" class="btn btn-primary w-100 py-3">
-                        <i class="bi bi-person-plus me-2"></i>Create Account
+                    <button type="submit" class="btn btn-primary w-100 py-3" id="registerBtn">
+                        <i class="bi bi-person-plus me-2"></i><span id="registerBtnText">Create Account</span>
                     </button>
 
                     <div class="auth-divider">or</div>
@@ -124,5 +120,30 @@
         </div>
     </section>
     <!-- Registration End -->
+
+<style>
+.auth-feedback {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.auth-feedback.error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+.auth-feedback.success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+.auth-feedback i {
+    font-size: 16px;
+}
+</style>
 
 @endsection

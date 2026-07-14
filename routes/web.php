@@ -17,15 +17,26 @@ Route::get('/payment-status', [App\Http\Controllers\MonnifyController::class, 'p
 Route::get('/pages-directory', function () { return view('pages-directory'); })->name('pages-directory');
 Route::get('/contact', function () { return view('contact'); })->name('contact');
 Route::get('/login', function () { return view('login'); })->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/signup', function () { return view('signup'); })->name('signup');
-Route::post('/signup', [AuthController::class, 'register']);
+Route::post('/signup', [AuthController::class, 'register'])->name('signup.post');
 Route::get('/service', [HospitalController::class, 'services'])->name('service');
 Route::get('/services/{slug}', [HospitalController::class, 'serviceDetail'])->name('service-detail');
 Route::get('/verification-portal', function () { return view('verification-portal'); })->name('verification-portal');
 Route::get('/password-reset-email', function () { return view('password-reset/email'); })->name('password.reset.email');
+Route::post('/password/forgot', [AuthController::class, 'forgotPassword'])->name('password.forgot');
 Route::get('/password-reset-link', function (Illuminate\Http\Request $request) {
     return view('password-reset/link', ['email' => $request->query('email'), 'token' => $request->query('token')]);
 })->name('password.reset.link');
+Route::post('/password/reset', [AuthController::class, 'resetPassword'])->name('password.reset');
 Route::get('/password-reset-confirmation', function () { return view('password-reset/confirmation'); })->name('password.reset.confirmation');
+
+// Debug route - Remove in production
+Route::get('/debug-assets', function () {
+    return view('debug-assets');
+});
+
+Route::get('/test-urls', function () {
+    return view('test-urls');
+});

@@ -11,12 +11,57 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class AdminDashboardController extends Controller
 {
     private function tableExists(string $table): bool
     {
         return Schema::hasTable($table);
+    }
+
+    protected function storeBase64Image($imageData): ?string
+    {
+        if (! $imageData || ! is_string($imageData) || strpos($imageData, 'data:image') !== 0) {
+            return null;
+        }
+
+        try {
+            $useCloudinary = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN);
+            
+            // Extract base64 from data URI
+            $parts = explode(',', $imageData);
+            if (count($parts) !== 2) {
+                return null;
+            }
+            
+            $data = base64_decode($parts[1], true);
+            if ($data === false) {
+                return null;
+            }
+
+            if ($useCloudinary) {
+                $tempFile = tempnam(sys_get_temp_dir(), 'img');
+                file_put_contents($tempFile, $data);
+                
+                $result = \Cloudinary\Uploader::upload($tempFile, [
+                    'folder' => 'maraba-hospital/profile-images',
+                    'resource_type' => 'auto',
+                    'quality' => 'auto',
+                ]);
+                
+                @unlink($tempFile);
+                return $result->get('secure_url');
+            }
+            
+            // Fallback to local storage
+            $filename = 'profile-' . time() . '-' . uniqid() . '.png';
+            Storage::disk('local')->put('profile-images/' . $filename, $data);
+            return 'storage/profile-images/' . $filename;
+        } catch (\Throwable $e) {
+            \Log::warning('Base64 image upload failed: ' . $e->getMessage());
+            return null;
+        }
     }
 
     public function stats()
@@ -197,6 +242,49 @@ class AdminDashboardController extends Controller
         $user->forceDelete();
 
         return response()->json(['message' => 'User declined.']);
+    }
+
+    public function createUser(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'role' => 'required|string|in:patient,doctor,technician,admin,staff',
+            'password' => 'required|string|min:8',
+            'image' => 'nullable|string', // Base64 image
+            'is_approved' => 'nullable|boolean',
+        ]);
+
+        $imagePath = null;
+        if (!empty($validated['image'])) {
+            $imagePath = $this->storeBase64Image($validated['image']);
+        }
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'role' => $validated['role'],
+            'password' => Hash::make($validated['password']),
+            'image' => $imagePath,
+            'is_approved' => $validated['is_approved'] ?? true,
+        ]);
+
+        if ($validated['role'] !== 'patient' && $validated['role'] !== 'admin') {
+            StaffMember::create([
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'role' => $validated['role'],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'User created successfully.',
+            'data' => $user->fresh(['staffMember']),
+        ], 201);
     }
 
     public function indexSpecializations()

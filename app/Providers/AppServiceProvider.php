@@ -20,16 +20,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->app->booted(function () {
-            $disk = env('SWITCH_TO_CLOUDINARY') === 'true' ? 'cloudinary' : env('FILESYSTEM_DISK', 'local');
+            $useCloudinary = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN);
+            $disk = $useCloudinary ? 'cloudinary' : env('FILESYSTEM_DISK', 'local');
+
             config(['filesystems.default' => $disk]);
-            config(['filesystems.disks.cloudinary' => [
-                'driver' => 'cloudinary',
-                'key' => env('CLOUDINARY_API_KEY'),
-                'secret' => env('CLOUDINARY_API_SECRET'),
-                'cloud' => env('CLOUDINARY_CLOUD_NAME'),
-                'url' => env('CLOUDINARY_URL'),
-                'secure' => true,
-            ]]);
+
+            if ($useCloudinary) {
+                config(['filesystems.disks.cloudinary' => [
+                    'driver' => 'cloudinary',
+                    'key' => env('CLOUDINARY_API_KEY'),
+                    'secret' => env('CLOUDINARY_API_SECRET'),
+                    'cloud' => env('CLOUDINARY_CLOUD_NAME'),
+                    'url' => env('CLOUDINARY_URL'),
+                    'secure' => true,
+                ]]);
+            }
         });
     }
 }

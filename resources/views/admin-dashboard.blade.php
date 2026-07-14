@@ -18,6 +18,7 @@
                 <div class="col-lg-3">
                     <div class="sidebar-nav">
                         <a href="#" class="nav-link active" data-tab="staffListTab"><i class="bi bi-people me-2"></i> Staff List</a>
+                        <a href="#" class="nav-link" onclick="openAddUserModal()"><i class="bi bi-person-plus me-2"></i> Create User</a>
                         <a href="#" class="nav-link" data-tab="scheduleListTab"><i class="bi bi-calendar-week me-2"></i> Schedule List</a>
                         <a href="#" class="nav-link" data-tab="manageAvailabilityTab"><i class="bi bi-clock-history me-2"></i> Manage Availability</a>
                         <a href="#" class="nav-link" data-tab="specializationsTab"><i class="bi bi-tags me-2"></i> Specializations</a>

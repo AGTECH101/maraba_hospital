@@ -22,6 +22,7 @@ Route::patch('/dashboard/specializations/{specialization}', [AdminDashboardContr
 Route::delete('/dashboard/specializations/{specialization}', [AdminDashboardController::class, 'destroySpecialization']);
 Route::post('/dashboard/staff', [AdminDashboardController::class, 'storeStaff']);
 Route::patch('/dashboard/staff/{staffMember}', [AdminDashboardController::class, 'updateStaff']);
+Route::post('/dashboard/users', [AdminDashboardController::class, 'createUser']);
 Route::get('/dashboard/pending-users', [AdminDashboardController::class, 'pendingUsers']);
 Route::post('/dashboard/users/{user}/approve', [AdminDashboardController::class, 'approveUser']);
 Route::delete('/dashboard/users/{user}', [AdminDashboardController::class, 'declineUser']);
@@ -33,3 +34,4 @@ Route::get('/transactions/{transaction}/receipt', [App\Http\Controllers\MonnifyC
 Route::get('/transactions/reference/{reference}', [App\Http\Controllers\MonnifyController::class, 'getByReference']);
 Route::get('/transactions/reference/{reference}/receipt', [App\Http\Controllers\MonnifyController::class, 'downloadReceiptByReference']);
 Route::post('/verification/appointment', [App\Http\Controllers\MonnifyController::class, 'verifyAppointment']);
+Route::post('/verification/mark-used', [App\Http\Controllers\MonnifyController::class, 'markAppointmentUsed']);
