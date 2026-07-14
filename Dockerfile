@@ -19,10 +19,7 @@ RUN apk add --no-cache \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
-
-# Copy application code
 COPY . .
 
 # ---- Create required directories and set permissions ----
@@ -33,7 +30,7 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
     && chown -R www-data:www-data storage bootstrap/cache /var/data /var/run/nginx /var/log/nginx \
     && chmod -R 775 storage bootstrap/cache /var/data
 
-# ---- Set environment variables for build ----
+# ---- Set environment variables for build (only for Composer/Artisan commands) ----
 ENV APP_ENV=production \
     APP_DEBUG=false \
     APP_KEY=base64:abcdefghijklmnopqrstuvwxyz1234567890= \
@@ -43,26 +40,19 @@ ENV APP_ENV=production \
     SESSION_DRIVER=file \
     QUEUE_CONNECTION=sync
 
-# ---- Install PHP dependencies (skip scripts) ----
+# ---- Install PHP dependencies ----
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-
-# ---- Run package discover ----
 RUN php artisan package:discover --ansi
 
 # ---- Copy built Vite assets ----
 COPY --from=assets /app/public/build /var/www/html/public/build
 
-# ---- Laravel optimizations ----
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
-
 # ---- Nginx configuration ----
 RUN rm /etc/nginx/http.d/default.conf
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 
-# Expose port 80
+# ---- Expose port 80 ----
 EXPOSE 80
 
-# ---- Start both PHP-FPM and Nginx (FIXED) ----
+# ---- Start both PHP-FPM and Nginx ----
 CMD sh -c "php-fpm -D && nginx -g 'daemon off;'"
