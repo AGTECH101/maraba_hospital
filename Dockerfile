@@ -33,4 +33,4 @@ RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-d
 ENV PORT=8000
 EXPOSE 8000
 
-CMD sh -c "php artisan config:clear && php artisan route:cache && php artisan view:cache && php artisan migrate --force && php artisan serve --host 0.0.0.0 --port ${PORT}"
+CMD sh -c "mkdir -p /var/www/html/storage/framework/views /var/www/html/storage/framework/cache /var/www/html/bootstrap/cache /var/www/html/resources/views && php artisan config:clear || true && php artisan route:clear || true && php artisan view:clear || true && php artisan migrate --force && php artisan storage:link || true && php artisan serve --host 0.0.0.0 --port ${PORT}"

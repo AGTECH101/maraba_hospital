@@ -29,24 +29,3 @@ services:
         value: file
       - key: QUEUE_CONNECTION
         value: sync
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: APP_DEBUG
-        value: false
-      - key: APP_KEY
-        generateValue: true
-      - key: APP_URL
-        value: https://marabahospital.onrender.com
-      - key: LOG_CHANNEL
-        value: stack
-      - key: DB_CONNECTION
-        value: sqlite
-      - key: DB_DATABASE
-        value: /var/data/database.sqlite
-      - key: CACHE_STORE
-        value: file
-      - key: SESSION_DRIVER
-        value: file
-      - key: QUEUE_CONNECTION
-        value: sync
