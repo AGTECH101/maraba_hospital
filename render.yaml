@@ -3,10 +3,10 @@ services:
     name: maraba-hospital
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile   # <-- now just "Dockerfile"
+    dockerfilePath: ./Dockerfile   # <-- points to your new Dockerfile
     disk:
       name: sqlite-data
-      mountPath: /var/data
+      mountPath: /var/data         # <-- exactly matches DB_DATABASE path
       sizeGB: 1
     envVars:
       - key: APP_ENV

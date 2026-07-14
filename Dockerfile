@@ -1,55 +1,31 @@
 # syntax=docker/dockerfile:1
 
-# ---- Build stage for assets ----
+# ---- Build stage for Vite assets ----
 FROM node:20-alpine AS assets
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY resources/ resources/
-COPY vite.config.js ./
-RUN npm run build
+COPY . .
+RUN npm ci && npm run build
 
 # ---- Final PHP-FPM image ----
 FROM php:8.2-fpm-alpine
 
-# Install system dependencies
-RUN apk add --no-cache \
-    git \
-    unzip \
-    libzip-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    oniguruma-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) pdo_mysql zip gd mbstring
+RUN apk add --no-cache sqlite sqlite-dev libzip-dev oniguruma-dev \
+    && docker-php-ext-install -j$(nproc) pdo_sqlite mbstring zip
 
-# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
-
-# Copy application files (exclude node_modules, etc.)
 COPY . .
-
-# Install PHP dependencies (production only)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Copy built assets from the assets stage
 COPY --from=assets /app/public/build /var/www/html/public/build
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Optimize Laravel (caches config, routes, views)
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+RUN mkdir -p /var/data && touch /var/data/database.sqlite && chown www-data:www-data /var/data/database.sqlite
 
-# Expose port 9000 for PHP-FPM
+RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
+
 EXPOSE 9000
-
-# Start PHP-FPM
 CMD ["php-fpm"]
