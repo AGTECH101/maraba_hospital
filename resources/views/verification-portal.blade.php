@@ -30,6 +30,12 @@
 </div>
 
 <script>
+    window.resolveApiUrl = function (path) {
+        const basePath = window.location.pathname.replace(/\/verification-portal\/?$/, '').replace(/\/$/, '');
+        const normalizedBase = basePath || '';
+        return `${normalizedBase}${path}`;
+    };
+
     window.verifyCode = async function (event) {
         event.preventDefault();
         const code = document.getElementById('verificationCode').value.trim();
@@ -40,7 +46,7 @@
         resultContent.innerHTML = '<div class="text-muted">Checking verification code...</div>';
 
         try {
-            const response = await fetch('/api/verification/appointment', {
+            const response = await fetch(window.resolveApiUrl('/api/verification/appointment'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
                 body: JSON.stringify({ code })
@@ -126,7 +132,7 @@
         resultContent.innerHTML = '<div class="text-muted">Marking appointment as used...</div>';
 
         try {
-            const response = await fetch('/api/verification/mark-used', {
+            const response = await fetch(window.resolveApiUrl('/api/verification/mark-used'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
                 body: JSON.stringify({ code })

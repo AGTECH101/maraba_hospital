@@ -248,24 +248,28 @@ if (document.readyState === 'loading') {
 
         window.saveEditedStaff = function() {
             const id = document.getElementById('editStaffId').value;
-            const payload = {
-                name: document.getElementById('editStaffName').value.trim(),
-                email: document.getElementById('editStaffEmail').value.trim(),
-                phone: document.getElementById('editStaffContact').value.trim(),
-                role: document.getElementById('editStaffRole').value,
-                salary: document.getElementById('editStaffSalary').value,
-                bio: document.getElementById('editStaffBio').value.trim(),
-                image: document.getElementById('editStaffImage').value || null,
-                specialization_ids: Array.from(document.getElementById('editStaffSpecializations')?.selectedOptions || []).map(o => Number(o.value)),
-            };
-            if (!payload.name || !payload.email || !payload.role || !payload.salary) {
+            const formData = new FormData();
+            formData.append('name', document.getElementById('editStaffName').value.trim());
+            formData.append('email', document.getElementById('editStaffEmail').value.trim());
+            formData.append('phone', document.getElementById('editStaffContact').value.trim());
+            formData.append('role', document.getElementById('editStaffRole').value);
+            formData.append('salary', document.getElementById('editStaffSalary').value);
+            formData.append('bio', document.getElementById('editStaffBio').value.trim());
+            Array.from(document.getElementById('editStaffSpecializations')?.selectedOptions || []).forEach(option => {
+                formData.append('specialization_ids[]', option.value);
+            });
+            const imageFile = document.getElementById('editStaffImageInput')?.files?.[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+            if (!formData.get('name') || !formData.get('email') || !formData.get('role') || !formData.get('salary')) {
                 alert('Please fill all required fields');
                 return;
             }
             fetch(`/api/dashboard/staff/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                body: JSON.stringify(payload)
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: formData
             }).then(res => res.json()).then(() => {
                 loadDashboardData();
                 bootstrap.Modal.getInstance(document.getElementById('editStaffModal')).hide();
@@ -273,24 +277,28 @@ if (document.readyState === 'loading') {
         };
 
         window.addNewStaff = function() {
-            const payload = {
-                name: document.getElementById('newStaffName').value.trim(),
-                email: document.getElementById('newStaffEmail').value.trim(),
-                phone: document.getElementById('newStaffContact').value.trim(),
-                role: document.getElementById('newStaffRole').value,
-                salary: document.getElementById('newStaffSalary').value,
-                bio: document.getElementById('newStaffBio').value.trim(),
-                image: document.getElementById('newStaffImage').value || null,
-                specialization_ids: Array.from(document.getElementById('newStaffSpecializations')?.selectedOptions || []).map(o => Number(o.value)),
-            };
-            if (!payload.name || !payload.email || !payload.role || !payload.salary) {
+            const formData = new FormData();
+            formData.append('name', document.getElementById('newStaffName').value.trim());
+            formData.append('email', document.getElementById('newStaffEmail').value.trim());
+            formData.append('phone', document.getElementById('newStaffContact').value.trim());
+            formData.append('role', document.getElementById('newStaffRole').value);
+            formData.append('salary', document.getElementById('newStaffSalary').value);
+            formData.append('bio', document.getElementById('newStaffBio').value.trim());
+            Array.from(document.getElementById('newStaffSpecializations')?.selectedOptions || []).forEach(option => {
+                formData.append('specialization_ids[]', option.value);
+            });
+            const imageFile = document.getElementById('newStaffImageInput')?.files?.[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+            if (!formData.get('name') || !formData.get('email') || !formData.get('role') || !formData.get('salary')) {
                 alert('Please fill all required fields');
                 return;
             }
             fetch('/api/dashboard/staff', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                body: JSON.stringify(payload)
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: formData
             }).then(res => res.json()).then(() => {
                 loadDashboardData();
                 bootstrap.Modal.getInstance(document.getElementById('addStaffModal')).hide();
@@ -352,7 +360,7 @@ if (document.readyState === 'loading') {
             const phone = document.getElementById('addUserPhone').value.trim();
             const role = document.getElementById('addUserRole').value;
             const password = document.getElementById('addUserPassword').value;
-            const image = document.getElementById('addUserImage').value || null;
+            const imageFile = document.getElementById('addUserImageInput')?.files?.[0] || null;
 
             if (!name || !email || !role || !password) {
                 alert('Please fill all required fields');
@@ -364,12 +372,21 @@ if (document.readyState === 'loading') {
                 return;
             }
 
-            const payload = { name, email, phone, role, password, image, is_approved: true };
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('email', email);
+            formData.append('phone', phone);
+            formData.append('role', role);
+            formData.append('password', password);
+            formData.append('is_approved', '1');
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
 
             fetch('/api/dashboard/users', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                body: JSON.stringify(payload)
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: formData
             })
             .then(res => res.json())
             .then(() => {

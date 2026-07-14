@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -22,23 +23,24 @@ class AuthController extends Controller
             return null;
         }
 
-        $useCloudinary = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN);
-        
-        if ($useCloudinary) {
-            try {
-                $path = \Cloudinary\Uploader::upload($image->getRealPath(), [
-                    'folder' => 'maraba-hospital/profile-images',
-                    'resource_type' => 'auto',
-                    'quality' => 'auto',
-                ])->get('secure_url');
-                return $path;
-            } catch (\Throwable $e) {
-                \Log::warning('Cloudinary upload failed: ' . $e->getMessage());
-                return null;
-            }
+        $disk = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN) ? 'cloudinary' : (env('FILESYSTEM_DISK', 'public') === 'local' ? 'public' : env('FILESYSTEM_DISK', 'public'));
+        $path = $image->store('profile-images', ['disk' => $disk]);
+
+        if (! $path) {
+            return null;
         }
-        
-        return Storage::disk('local')->putFile('profile-images', $image);
+
+        try {
+            $adapter = Storage::disk($disk);
+
+            if (method_exists($adapter, 'url')) {
+                return $adapter->url($path);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Unable to resolve uploaded image URL: ' . $e->getMessage());
+        }
+
+        return rtrim(config('app.url', 'http://localhost'), '/') . '/storage/' . ltrim($path, '/');
     }
 
     protected function storeBase64Image($imageData): ?string
@@ -48,39 +50,34 @@ class AuthController extends Controller
         }
 
         try {
-            $useCloudinary = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN);
-            
-            // Extract base64 from data URI
             $parts = explode(',', $imageData);
             if (count($parts) !== 2) {
                 return null;
             }
-            
+
             $data = base64_decode($parts[1], true);
             if ($data === false) {
                 return null;
             }
 
-            if ($useCloudinary) {
-                $tempFile = tempnam(sys_get_temp_dir(), 'img');
-                file_put_contents($tempFile, $data);
-                
-                $result = \Cloudinary\Uploader::upload($tempFile, [
-                    'folder' => 'maraba-hospital/profile-images',
-                    'resource_type' => 'auto',
-                    'quality' => 'auto',
-                ]);
-                
-                @unlink($tempFile);
-                return $result->get('secure_url');
-            }
-            
-            // Fallback to local storage
+            $disk = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN) ? 'cloudinary' : (env('FILESYSTEM_DISK', 'public') === 'local' ? 'public' : env('FILESYSTEM_DISK', 'public'));
             $filename = 'profile-' . time() . '-' . uniqid() . '.png';
-            Storage::disk('local')->put('profile-images/' . $filename, $data);
-            return 'storage/profile-images/' . $filename;
+            $path = 'profile-images/' . $filename;
+            Storage::disk($disk)->put($path, $data);
+
+            try {
+                $adapter = Storage::disk($disk);
+
+                if (method_exists($adapter, 'url')) {
+                    return $adapter->url($path);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Unable to resolve base64 image URL: ' . $e->getMessage());
+            }
+
+            return rtrim(config('app.url', 'http://localhost'), '/') . '/storage/' . ltrim($path, '/');
         } catch (\Throwable $e) {
-            \Log::warning('Base64 image upload failed: ' . $e->getMessage());
+            Log::warning('Base64 image upload failed: ' . $e->getMessage());
             return null;
         }
     }
@@ -91,35 +88,32 @@ public function register(Request $request)
         'name' => 'required|string|max:255',
         'email' => 'required|email|unique:users,email',
         'phone' => 'nullable|string|max:20',
-        'role' => 'required|string|in:doctor,technician',
+        'role' => 'required|string|in:patient,doctor,technician,admin',
         'password' => 'required|string|min:8|confirmed',
-        'image' => 'nullable|string',
+        'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
     ]);
 
-    $imagePath = null;
-    if (!empty($validated['image'])) {
-        $imagePath = $this->storeBase64Image($validated['image']);
-    }
+    $imagePath = $request->hasFile('image') ? $this->storeProfileImage($request->file('image')) : null;
 
     $user = User::create([
         'name' => $validated['name'],
         'email' => $validated['email'],
         'phone' => $validated['phone'] ?? null,
-        'role' => $validated['role'], // now actually uses the submitted, validated role
-        'password' => $validated['password'],
+        'role' => $validated['role'],
+        'password' => Hash::make($validated['password']),
         'is_approved' => false,
         'image' => $imagePath,
     ]);
 
-    // Also create the linked StaffMember record so this user shows up
-    // in the admin dashboard's staff list once approved
-    StaffMember::create([
-        'user_id' => $user->id,
-        'name' => $user->name,
-        'email' => $user->email,
-        'phone' => $user->phone,
-        'role' => $user->role,
-    ]);
+    if (in_array($user->role, ['doctor', 'technician', 'admin'], true)) {
+        StaffMember::create([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+        ]);
+    }
 
     if ($request->expectsJson() || $request->ajax()) {
         return response()->json([

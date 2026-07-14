@@ -19,7 +19,9 @@ Route::get('/contact', function () { return view('contact'); })->name('contact')
 Route::get('/login', function () { return view('login'); })->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-Route::get('/signup', function () { return view('signup'); })->name('signup');
+Route::get('/signup', function () {
+    return view('signup', ['roles' => ['patient', 'doctor', 'technician', 'admin']]);
+})->name('signup');
 Route::post('/signup', [AuthController::class, 'register'])->name('signup.post');
 Route::get('/service', [HospitalController::class, 'services'])->name('service');
 Route::get('/services/{slug}', [HospitalController::class, 'serviceDetail'])->name('service-detail');

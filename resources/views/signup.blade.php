@@ -32,7 +32,7 @@
                                 <i class="bi bi-pencil"></i>
                             </div>
                         </div>
-                        <input type="file" id="profileInput" accept="image/*" onchange="previewProfileImage(event)">
+                        <input type="file" id="profileInput" name="image" accept="image/*" onchange="previewProfileImage(event)">
                         <input type="hidden" name="image" id="profileImageHidden" value="">
                         <small class="profile-upload-hint">Click the circle to upload a profile picture (optional)</small>
                     </div>
@@ -59,15 +59,15 @@
                     </div>
 
                     <!-- Role Selection -->
-                    <label style="font-size:14px; font-weight:500; color:#555; margin-bottom:8px; display:block;">
-                        <i class="bi bi-briefcase me-2"></i>I am a
-                    </label>
-                    <div class="role-selector" id="roleSelector">
-                        <label class="role-option active" onclick="selectRole(this)">
-                            <input type="radio" name="role" value="patient" checked>
-                            <i class="bi bi-person"></i>
-                            <span>Patient</span>
-                        </label>
+                    <div class="form-floating-custom">
+                        <select class="form-control" id="role" name="role" required>
+                            <option value="">Select your role</option>
+                            @foreach(($roles ?? ['patient','doctor','technician','admin']) as $role)
+                                <option value="{{ $role }}" {{ old('role') === $role ? 'selected' : '' }}>{{ ucfirst($role) }}</option>
+                            @endforeach
+                        </select>
+                        <label for="role"><i class="bi bi-briefcase me-2"></i>Select Role</label>
+                        @error('role')<div class="invalid-feedback-custom" style="color:#dc3545; font-size:13px; margin-top:4px;">{{ $message }}</div>@enderror
                     </div>
 
                     <!-- Password -->

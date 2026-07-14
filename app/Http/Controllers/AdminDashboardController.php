@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,6 +21,40 @@ class AdminDashboardController extends Controller
         return Schema::hasTable($table);
     }
 
+    private function resolveStorageDisk(): string
+    {
+        $useCloudinary = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN);
+
+        return $useCloudinary ? 'cloudinary' : (env('FILESYSTEM_DISK', 'public') === 'local' ? 'public' : env('FILESYSTEM_DISK', 'public'));
+    }
+
+    protected function buildImageUrl(string $path, string $disk): ?string
+    {
+        try {
+            $adapter = Storage::disk($disk);
+
+            if (method_exists($adapter, 'url')) {
+                return $adapter->url($path);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Unable to resolve image URL for disk ' . $disk . ': ' . $e->getMessage());
+        }
+
+        return rtrim(config('app.url', 'http://localhost'), '/') . '/storage/' . ltrim($path, '/');
+    }
+
+    protected function storeImageFile($image, string $folder = 'profile-images'): ?string
+    {
+        if (! $image || ! $image->isValid()) {
+            return null;
+        }
+
+        $disk = $this->resolveStorageDisk();
+        $path = $image->store($folder, ['disk' => $disk]);
+
+        return $path ? $this->buildImageUrl($path, $disk) : null;
+    }
+
     protected function storeBase64Image($imageData): ?string
     {
         if (! $imageData || ! is_string($imageData) || strpos($imageData, 'data:image') !== 0) {
@@ -27,39 +62,24 @@ class AdminDashboardController extends Controller
         }
 
         try {
-            $useCloudinary = filter_var(env('SWITCH_TO_CLOUDINARY', false), FILTER_VALIDATE_BOOLEAN);
-            
-            // Extract base64 from data URI
             $parts = explode(',', $imageData);
             if (count($parts) !== 2) {
                 return null;
             }
-            
+
             $data = base64_decode($parts[1], true);
             if ($data === false) {
                 return null;
             }
 
-            if ($useCloudinary) {
-                $tempFile = tempnam(sys_get_temp_dir(), 'img');
-                file_put_contents($tempFile, $data);
-                
-                $result = \Cloudinary\Uploader::upload($tempFile, [
-                    'folder' => 'maraba-hospital/profile-images',
-                    'resource_type' => 'auto',
-                    'quality' => 'auto',
-                ]);
-                
-                @unlink($tempFile);
-                return $result->get('secure_url');
-            }
-            
-            // Fallback to local storage
+            $disk = $this->resolveStorageDisk();
             $filename = 'profile-' . time() . '-' . uniqid() . '.png';
-            Storage::disk('local')->put('profile-images/' . $filename, $data);
-            return 'storage/profile-images/' . $filename;
+            $path = 'profile-images/' . $filename;
+            Storage::disk($disk)->put($path, $data);
+
+            return $this->buildImageUrl($path, $disk);
         } catch (\Throwable $e) {
-            \Log::warning('Base64 image upload failed: ' . $e->getMessage());
+            Log::warning('Base64 image upload failed: ' . $e->getMessage());
             return null;
         }
     }
@@ -123,11 +143,13 @@ class AdminDashboardController extends Controller
             'salary' => 'nullable|numeric',
             'bio' => 'nullable|string',
             'specialty' => 'nullable|string',
-            'image' => 'nullable|string',
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'availability' => 'nullable|array',
             'specialization_ids' => 'nullable|array',
             'specialization_ids.*' => 'exists:specializations,id',
         ]);
+
+        $imagePath = $request->hasFile('image') ? $this->storeImageFile($request->file('image')) : null;
 
         $user = User::firstOrCreate(
             ['email' => $validated['email']],
@@ -135,7 +157,7 @@ class AdminDashboardController extends Controller
                 'name' => $validated['name'],
                 'phone' => $validated['phone'] ?? null,
                 'role' => $validated['role'],
-                'image' => $validated['image'] ?? null,
+                'image' => $imagePath,
                 'password' => Hash::make('Password123!'),
                 'is_approved' => true,
             ]
@@ -164,11 +186,16 @@ class AdminDashboardController extends Controller
             'salary' => 'nullable|numeric',
             'bio' => 'nullable|string',
             'specialty' => 'nullable|string',
-            'image' => 'nullable|string',
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'availability' => 'nullable|array',
             'specialization_ids' => 'nullable|array',
             'specialization_ids.*' => 'exists:specializations,id',
         ]);
+
+        $imagePath = $request->hasFile('image') ? $this->storeImageFile($request->file('image')) : null;
+        if ($imagePath) {
+            $validated['image'] = $imagePath;
+        }
 
         $staffMember->update($validated);
 
@@ -252,12 +279,12 @@ class AdminDashboardController extends Controller
             'phone' => 'nullable|string|max:20',
             'role' => 'required|string|in:patient,doctor,technician,admin,staff',
             'password' => 'required|string|min:8',
-            'image' => 'nullable|string', // Base64 image
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'is_approved' => 'nullable|boolean',
         ]);
 
-        $imagePath = null;
-        if (!empty($validated['image'])) {
+        $imagePath = $request->hasFile('image') ? $this->storeImageFile($request->file('image')) : null;
+        if (! $imagePath && ! empty($validated['image']) && is_string($validated['image'])) {
             $imagePath = $this->storeBase64Image($validated['image']);
         }
 
