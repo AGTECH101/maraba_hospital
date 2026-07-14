@@ -24,4 +24,13 @@ bootstrap/cache
 .DS_Store
 .idea
 .vscode
-.hot
+node_modules
+storage
+bootstrap/cache
+.git
+.env
+*.log
+.DS_Store
+hot
+.idea
+.vscode
