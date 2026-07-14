@@ -3,7 +3,7 @@ services:
     name: maraba-hospital
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile.prod
+    dockerfilePath: ./Dockerfile   # <-- now just "Dockerfile"
     disk:
       name: sqlite-data
       mountPath: /var/data

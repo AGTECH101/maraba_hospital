@@ -1,36 +1,55 @@
-FROM php:8.2-cli
+# syntax=docker/dockerfile:1
+
+# ---- Build stage for assets ----
+FROM node:20-alpine AS assets
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY resources/ resources/
+COPY vite.config.js ./
+RUN npm run build
+
+# ---- Final PHP-FPM image ----
+FROM php:8.2-fpm-alpine
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     git \
     unzip \
     libzip-dev \
     libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    libicu-dev \
-    zlib1g-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    npm \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    oniguruma-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip exif gd intl bcmath xml
+    && docker-php-ext-install -j$(nproc) pdo_mysql zip gd mbstring
 
-# Install composer
+# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Set working directory
 WORKDIR /var/www/html
 
-COPY . /var/www/html
+# Copy application files (exclude node_modules, etc.)
+COPY . .
 
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev || true \
-    && npm install \
-    && npm run build \
-    && mkdir -p /var/data \
-    && touch /var/data/database.sqlite \
-    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/data || true
+# Install PHP dependencies (production only)
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-ENV PORT=8000
-EXPOSE 8000
+# Copy built assets from the assets stage
+COPY --from=assets /app/public/build /var/www/html/public/build
 
-CMD sh -c "mkdir -p /var/www/html/storage/framework/views /var/www/html/storage/framework/cache /var/www/html/bootstrap/cache /var/www/html/resources/views && php artisan config:clear || true && php artisan route:clear || true && php artisan view:clear || true && php artisan migrate --force && php artisan storage:link || true && php artisan serve --host 0.0.0.0 --port ${PORT}"
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Optimize Laravel (caches config, routes, views)
+RUN php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
+
+# Expose port 9000 for PHP-FPM
+EXPOSE 9000
+
+# Start PHP-FPM
+CMD ["php-fpm"]
