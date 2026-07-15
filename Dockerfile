@@ -1,58 +1,83 @@
-# syntax=docker/dockerfile:1
-
-# ---- Build stage for Vite assets ----
-FROM node:20-alpine AS assets
+# =========================================================
+# Stage 1: Install PHP (Composer) dependencies
+# =========================================================
+FROM composer:2 AS vendor
 WORKDIR /app
-COPY . .
-RUN npm ci && npm run build
+COPY database/ database/
+COPY composer.json composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-scripts \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader
 
-# ---- Final image with Nginx + PHP-FPM ----
+# =========================================================
+# Stage 2: Build frontend assets (Vite / Tailwind / etc.)
+# =========================================================
+FROM node:20-alpine AS frontend
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+COPY --from=vendor /app/vendor ./vendor
+RUN npm run build
+
+# =========================================================
+# Stage 3: Final runtime image (PHP-FPM + Nginx + Supervisor)
+# =========================================================
 FROM php:8.2-fpm-alpine
 
-# Install Nginx and required system packages
+# System deps + PHP extensions Laravel commonly needs
 RUN apk add --no-cache \
-    nginx \
-    sqlite sqlite-dev \
-    libzip-dev oniguruma-dev \
-    && docker-php-ext-install -j$(nproc) pdo_sqlite mbstring zip
-
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+        nginx \
+        supervisor \
+        bash \
+        curl \
+        gettext \
+        libzip-dev \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        freetype-dev \
+        oniguruma-dev \
+        sqlite-dev \
+        icu-dev \
+        zip \
+        unzip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install \
+        pdo \
+        pdo_mysql \
+        pdo_sqlite \
+        mbstring \
+        zip \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        intl \
+        opcache
 
 WORKDIR /var/www/html
+
+# Bring in vendor/ from stage 1 and built assets from stage 2
+COPY --from=vendor /app/vendor ./vendor
+COPY --from=frontend /app/public/build ./public/build
+
+# App source
 COPY . .
 
-# ---- Create required directories and set permissions ----
-RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/framework/testing \
-    && mkdir -p bootstrap/cache \
-    && mkdir -p /var/data /var/run/nginx /var/log/nginx \
-    && touch /var/data/database.sqlite \
-    && chown -R www-data:www-data storage bootstrap/cache /var/data /var/run/nginx /var/log/nginx \
-    && chmod -R 775 storage bootstrap/cache /var/data
+# Docker configs
+COPY docker/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY docker/supervisord.conf /etc/supervisor/supervisord.conf
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-# ---- Set environment variables for build (only for Composer/Artisan commands) ----
-ENV APP_ENV=production \
-    APP_DEBUG=false \
-    APP_KEY=base64:abcdefghijklmnopqrstuvwxyz1234567890= \
-    DB_CONNECTION=sqlite \
-    DB_DATABASE=/var/data/database.sqlite \
-    CACHE_DRIVER=file \
-    SESSION_DRIVER=file \
-    QUEUE_CONNECTION=sync
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage bootstrap/cache
 
-# ---- Install PHP dependencies ----
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-RUN php artisan package:discover --ansi
+# Render injects PORT at runtime; this is just documentation
+EXPOSE 8080
 
-# ---- Copy built Vite assets ----
-COPY --from=assets /app/public/build /var/www/html/public/build
-
-# ---- Nginx configuration ----
-RUN rm /etc/nginx/http.d/default.conf
-COPY docker/nginx.conf /etc/nginx/http.d/default.conf
-
-# ---- Expose port 80 ----
-EXPOSE 80
-
-# ---- Start both PHP-FPM and Nginx ----
-CMD sh -c "php-fpm -D && nginx -g 'daemon off;'"
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
