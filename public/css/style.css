@@ -1842,3 +1842,18 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 20px;   /* was 50% */
     object-fit: cover;
 }
+
+.staff-avatar-img,
+.profile-avatar-img {
+    max-width: 100%;
+    display: block;
+}
+
+.staff-name {
+    flex-wrap: nowrap;
+    min-width: 0;
+}
+.staff-name .staff-avatar,
+.staff-name .staff-avatar-img {
+    flex-shrink: 0;
+}

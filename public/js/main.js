@@ -202,7 +202,7 @@ if (document.readyState === 'loading') {
             const bioHtml = s.bio && s.bio.trim().length > 0 ? `<div class="bio-text">${s.bio}</div>` : `<div class="bio-text empty-bio">No bio provided</div>`;
 
             const bigAvatarHtml = s.image
-                ? `<img src="${s.image}" alt="${s.name}" style="width:80px;height:80px;border-radius:16px;object-fit:cover;" onerror="this.outerHTML='<div class=&quot;staff-avatar mx-auto&quot; style=&quot;width:80px;height:80px;font-size:32px;&quot;>${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>'">`
+                ? `<img src="${s.image}" alt="${s.name}" width="80" height="80" style="width:80px;height:80px;max-width:100%;border-radius:16px;object-fit:cover;display:block;margin:0 auto;flex-shrink:0;" onerror="this.outerHTML='<div class=&quot;staff-avatar mx-auto&quot; style=&quot;width:80px;height:80px;font-size:32px;&quot;>${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>'">`
                 : `<div class="staff-avatar mx-auto" style="width:80px;height:80px;font-size:32px;">${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>`;
 
             document.getElementById('staffDetailBody').innerHTML = `
