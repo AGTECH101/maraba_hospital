@@ -168,7 +168,7 @@ class HospitalController extends Controller
             'invoice_number' => 'INV-' . $appointment->id,
             'payment_method' => 'card',
             'status' => 'paid',
-            'amount' => $service->price + 120,
+            'amount' => $service->price + 320,
             'meta' => ['gateway' => 'local'],
         ]);
 

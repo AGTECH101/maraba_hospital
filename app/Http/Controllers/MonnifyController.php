@@ -38,7 +38,7 @@ class MonnifyController extends Controller
             $userId = $user->id;
         }
 
-        $serviceCharge = 310;
+        $serviceCharge = 320;
         $totalAmount = round((float) $service->price + $serviceCharge, 2);
 
         $appointment = Appointment::create([
@@ -122,7 +122,7 @@ class MonnifyController extends Controller
             $appt = $tx->appointment;
 
             $amount = (float) $tx->amount;
-            $serviceCharge = 310;
+            $serviceCharge = 320;
             $serviceAmount = max(0, round($amount - $serviceCharge, 2));
 
             $pdf = Pdf::loadView('receipt', [
@@ -151,7 +151,7 @@ class MonnifyController extends Controller
                 ->firstOrFail();
 
             $amount = (float) $tx->amount;
-            $serviceCharge = 310;
+            $serviceCharge = 320;
             $serviceAmount = max(0, round($amount - $serviceCharge, 2));
 
             $pdf = Pdf::loadView('receipt', [
@@ -182,7 +182,7 @@ class MonnifyController extends Controller
         }
 
         $amount = (float) $tx->amount;
-        $serviceCharge = 310;
+        $serviceCharge = 320;
         $serviceAmount = max(0, (int) round($amount - $serviceCharge));
 
         return response()->json([
@@ -350,7 +350,7 @@ class MonnifyController extends Controller
         $normalized = strtoupper(preg_replace('/\s+/', '', $code));
 
         $appointment = Appointment::with('service', 'staffMember')
-            ->whereRaw('UPPER(REPLACE(confirmation_code, " ", "")) = ?', [$normalized])
+            ->whereRaw("UPPER(REPLACE(confirmation_code, ' ', '')) = ?", [$normalized])
             ->first();
 
         if ($appointment instanceof Appointment) {
@@ -358,8 +358,8 @@ class MonnifyController extends Controller
         }
 
         $transaction = Transaction::with('appointment.service', 'appointment.staffMember')
-            ->whereRaw('UPPER(REPLACE(transaction_reference, " ", "")) = ?', [$normalized])
-            ->orWhereRaw('UPPER(REPLACE(invoice_number, " ", "")) = ?', [$normalized])
+            ->whereRaw("UPPER(REPLACE(transaction_reference, ' ', '')) = ?", [$normalized])
+            ->orWhereRaw("UPPER(REPLACE(invoice_number, ' ', '')) = ?", [$normalized])
             ->first();
 
         $appointment = $transaction?->appointment;

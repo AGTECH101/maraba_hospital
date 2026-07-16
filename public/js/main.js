@@ -169,16 +169,21 @@ if (document.readyState === 'loading') {
                 if (s.role === 'technician') techs++;
                 if ((s.appointments || []).length > 0) scheduled++;
                 if (!String(s.name || '').toLowerCase().includes(search) && !String(s.email || '').toLowerCase().includes(search) && !String(s.role || '').includes(search)) return;
+
                 const initials = String(s.name || '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                const avatarHtml = s.image
+                    ? `<img src="${s.image}" alt="${s.name}" class="staff-avatar-img" onerror="this.outerHTML='<div class=&quot;staff-avatar&quot;>${initials}</div>'">`
+                    : `<div class="staff-avatar">${initials}</div>`;
+
                 tbody.innerHTML += `<tr>
-                    <td><div class="staff-name"><div class="staff-avatar">${initials}</div>${s.name}</div></td>
+                    <td><div class="staff-name">${avatarHtml}${s.name}</div></td>
                     <td>${s.email}</td>
                     <td><span class="role-badge role-${s.role}">${s.role}</span></td>
                     <td>${formatCurrency(s.salary || 0)}</td>
                     <td><span class="schedule-badge">${(s.appointments || []).length > 0 ? '✓' : '○'}</span> (${(s.appointments || []).length})</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="viewStaffDetail(${s.id})"><i class="bi bi-eye"></i> View</button>
-                        <button class="btn btn-sm btn-outline-warning" onclick="openEditModal(${s.id})"><i class="bi bi-pencil"></i> Edit</button>
+                    <td class="table-actions">
+                        <button class="btn btn-sm btn-outline-primary action-btn" onclick="viewStaffDetail(${s.id})"><i class="bi bi-eye"></i> View</button>
+                        <button class="btn btn-sm btn-outline-warning action-btn" onclick="openEditModal(${s.id})"><i class="bi bi-pencil"></i> Edit</button>
                     </td>
                 </tr>`;
             });
@@ -195,12 +200,18 @@ if (document.readyState === 'loading') {
             const schedules = Array.isArray(s.appointments) ? s.appointments : [];
             let schedulesHtml = schedules.length === 0 ? '<li class="list-group-item text-muted">No schedules assigned</li>' : schedules.map(sc => `<li class="list-group-item"><strong>${sc.appointment_date} ${sc.appointment_time}</strong> – ${sc.patient_name} (${sc.notes || 'No notes'})</li>`).join('');
             const bioHtml = s.bio && s.bio.trim().length > 0 ? `<div class="bio-text">${s.bio}</div>` : `<div class="bio-text empty-bio">No bio provided</div>`;
+
+            const bigAvatarHtml = s.image
+                ? `<img src="${s.image}" alt="${s.name}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='<div class=&quot;staff-avatar mx-auto&quot; style=&quot;width:80px;height:80px;font-size:32px;&quot;>${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>'">`
+                : `<div class="staff-avatar mx-auto" style="width:80px;height:80px;font-size:32px;">${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>`;
+
             document.getElementById('staffDetailBody').innerHTML = `
                 <div class="text-center mb-3">
-                    <div class="staff-avatar mx-auto" style="width:80px;height:80px;font-size:32px;">${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
+                    ${bigAvatarHtml}
                     <h4>${s.name}</h4>
                     <p class="text-muted">${s.role}</p>
                 </div>
+                
                 <ul class="list-group mb-3">
                     <li class="list-group-item"><strong>Email:</strong> ${s.email}</li>
                     <li class="list-group-item"><strong>Contact:</strong> ${s.phone || 'N/A'}</li>
@@ -504,14 +515,14 @@ if (document.readyState === 'loading') {
             specializations.forEach(spec => {
                 const serviceNames = (spec.services || []).map(s => s.name).join(', ') || 'None';
                 const doctorNames = (spec.staffMembers || []).map(s => s.name).join(', ') || 'None';
-                tbody.innerHTML += `<tr>
+tbody.innerHTML += `<tr>
                     <td>${spec.name}</td>
                     <td>${spec.slug}</td>
                     <td>${serviceNames}</td>
                     <td>${doctorNames}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editSpecialization(${spec.id})">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSpecialization(${spec.id})">Delete</button>
+                    <td class="table-actions">
+                        <button class="btn btn-sm btn-outline-primary action-btn" onclick="editSpecialization(${spec.id})">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger action-btn" onclick="deleteSpecialization(${spec.id})">Delete</button>
                     </td>
                 </tr>`;
             });
@@ -873,10 +884,10 @@ if (document.readyState === 'loading') {
             document.getElementById('summaryDate').textContent = booking.date ? new Date(booking.date).toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) : '-';
             document.getElementById('summaryTime').textContent = booking.time || '-';
             document.getElementById('summaryPatient').textContent = booking.patient.name || '-';
-            // Payment summary: service price + flat service charge (₦120)
+            // Payment summary: service price + flat service charge (₦320)
             const service = services.find(s => String(s.id) === String(booking.service));
             const servicePrice = service ? Number(service.price || 0) : 0;
-            const serviceCharge = 120;
+            const serviceCharge = 320;
             const total = servicePrice + serviceCharge;
             booking.amount = total;
             const fmt = v => '₦' + Number(v || 0).toLocaleString();

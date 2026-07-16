@@ -1811,3 +1811,28 @@ h1, h2, h3, h4, h5, h6 {
     border-left: 4px solid #dc3545;
     margin-bottom: 20px;
 }
+/* Update!! */
+.staff-avatar-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.table-actions {
+    white-space: nowrap;
+}
+.action-btn {
+    width: 80px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 12px;
+}
+.action-btn i {
+    margin-right: 4px;
+}

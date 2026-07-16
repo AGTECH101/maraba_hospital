@@ -18,7 +18,6 @@
                 <div class="col-lg-3">
                     <div class="sidebar-nav">
                         <a href="#" class="nav-link active" data-tab="staffListTab"><i class="bi bi-people me-2"></i> Staff List</a>
-                        <a href="#" class="nav-link" onclick="openAddUserModal()"><i class="bi bi-person-plus me-2"></i> Create User</a>
                         <a href="#" class="nav-link" data-tab="scheduleListTab"><i class="bi bi-calendar-week me-2"></i> Schedule List</a>
                         <a href="#" class="nav-link" data-tab="manageAvailabilityTab"><i class="bi bi-clock-history me-2"></i> Manage Availability</a>
                         <a href="#" class="nav-link" data-tab="specializationsTab"><i class="bi bi-tags me-2"></i> Specializations</a>
@@ -269,56 +268,6 @@
     </div>
 
     <!-- ===== MODALS ===== -->
-
-    <!-- Create User Modal -->
-    <div class="modal fade" id="addUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addUserModalTitle">Create New User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="addUserId">
-                    <div class="form-group mb-3">
-                        <label>Full Name</label>
-                        <input type="text" id="addUserName" class="form-control">
-                    </div>
-                    <div class="form-group mb-3">
-                        <label>Email Address</label>
-                        <input type="email" id="addUserEmail" class="form-control">
-                    </div>
-                    <div class="form-group mb-3">
-                        <label>Contact Number</label>
-                        <input type="text" id="addUserPhone" class="form-control">
-                    </div>
-                    <div class="form-group mb-3">
-                        <label>Role</label>
-                        <select id="addUserRole" class="form-select">
-                            <option value="patient">Patient</option>
-                            <option value="doctor">Doctor</option>
-                            <option value="technician">Technician</option>
-                            <option value="admin">Administrator</option>
-                        </select>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label>Password</label>
-                        <input type="password" id="addUserPassword" class="form-control">
-                    </div>
-                    <div class="form-group mb-3">
-                        <label>Profile Image</label>
-                        <input type="file" id="addUserImageInput" class="form-control" accept="image/*" onchange="previewNewUserImage(event)">
-                        <img id="addUserImagePreview" src="" alt="Preview" class="img-fluid rounded mt-2" style="max-height:120px; display:none;">
-                        <input type="hidden" id="addUserImage">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-admin" onclick="saveNewUser()">Create User</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Staff Detail Modal -->
     <div class="modal fade" id="staffDetailModal" tabindex="-1">

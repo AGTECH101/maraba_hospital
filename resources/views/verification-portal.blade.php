@@ -36,13 +36,13 @@
         return `${normalizedBase}${path}`;
     };
 
-    window.verifyCode = async function (event) {
+    async function verifyCode(event) {
         event.preventDefault();
         const code = document.getElementById('verificationCode').value.trim();
         const resultContent = document.getElementById('resultContent');
         const resultContainer = document.getElementById('resultContainer');
 
-        resultContainer.classList.add('loading');
+        resultContainer.classList.add('loading', 'visible');
         resultContent.innerHTML = '<div class="text-muted">Checking verification code...</div>';
 
         try {
@@ -53,11 +53,7 @@
             });
 
             let data = {};
-            try {
-                data = await response.json();
-            } catch (e) {
-                // ignore parse error
-            }
+            try { data = await response.json(); } catch (e) {}
 
             if (!response.ok || !data.found) {
                 const msg = data?.message || 'No appointment or payment record was found for that code.';
@@ -66,41 +62,30 @@
             }
 
             const state = data.state || 'invalid';
-            let alertClass = 'alert-danger';
-            let title = 'Invalid Appointment';
-            let icon = 'x-circle-fill';
-            let badgeClass = 'bg-danger';
-            let badgeLabel = 'Invalid';
-            let showMarkUsed = false;
+            let alertClass = 'alert-danger', title = 'Invalid Appointment', icon = 'x-circle-fill',
+                badgeClass = 'bg-danger', badgeLabel = 'Invalid', showMarkUsed = false;
 
             switch (state) {
                 case 'valid':
-                    alertClass = 'alert-success';
-                    title = 'Appointment Verified';
-                    icon = 'check-circle-fill';
-                    badgeClass = 'bg-success';
-                    badgeLabel = 'Valid';
-                    showMarkUsed = true;
+                    alertClass = 'alert-success'; title = 'Appointment Verified'; icon = 'check-circle-fill';
+                    badgeClass = 'bg-success'; badgeLabel = 'Valid'; showMarkUsed = true;
                     break;
                 case 'expired':
-                    alertClass = 'alert-warning';
-                    title = 'Appointment Expired';
-                    icon = 'clock-history';
-                    badgeClass = 'bg-warning text-dark';
-                    badgeLabel = 'Expired';
+                    alertClass = 'alert-warning'; title = 'Appointment Expired'; icon = 'clock-history';
+                    badgeClass = 'bg-warning text-dark'; badgeLabel = 'Expired';
                     break;
                 case 'used':
-                    alertClass = 'alert-secondary';
-                    title = 'Appointment Already Used';
-                    icon = 'check-circle-fill';
-                    badgeClass = 'bg-secondary';
-                    badgeLabel = 'Used';
+                    alertClass = 'alert-secondary'; title = 'Appointment Already Used'; icon = 'check-circle-fill';
+                    badgeClass = 'bg-secondary'; badgeLabel = 'Used';
                     break;
             }
 
             const usedAt = data.used_at ? new Date(data.used_at).toLocaleString() : '';
             const usedAtMessage = usedAt ? `<p class="mt-2"><strong>Used On:</strong> ${usedAt}</p>` : '';
-            const markButton = showMarkUsed ? `<button class="btn btn-outline-primary btn-sm mt-3" type="button" onclick="window.markAppointmentUsed('${code.replace(/'/g, "\\'")}")"><i class="bi bi-check2-circle"></i> Mark as Used</button>` : '';
+            // NOTE: no inline onclick here — data-code carries the value safely
+            const markButton = showMarkUsed
+                ? `<button class="btn btn-outline-primary btn-sm mt-3" type="button" id="markUsedBtn" data-code="${code.replace(/"/g, '&quot;')}"><i class="bi bi-check2-circle"></i> Mark as Used</button>`
+                : '';
 
             resultContent.innerHTML = `
                 <div class="alert ${alertClass}">
@@ -123,11 +108,24 @@
         } finally {
             resultContainer.classList.remove('loading');
         }
-    };
+    }
 
-    window.markAppointmentUsed = async function (code) {
-        if (!confirm('Mark this appointment as used?')) return;
+    function showConfirmBox(code) {
+        const resultContent = document.getElementById('resultContent');
+        resultContent.insertAdjacentHTML('beforeend', `
+            <div class="alert alert-secondary mt-3" id="confirmUsedBox">
+                <p class="mb-2">Mark this appointment as used?</p>
+                <button class="btn btn-primary btn-sm" type="button" id="confirmYesBtn">Yes, mark as used</button>
+                <button class="btn btn-outline-secondary btn-sm" type="button" id="confirmCancelBtn">Cancel</button>
+            </div>
+        `);
+        document.getElementById('confirmYesBtn').addEventListener('click', () => confirmMarkUsed(code));
+        document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+            document.getElementById('confirmUsedBox')?.remove();
+        });
+    }
 
+    async function confirmMarkUsed(code) {
         const resultContent = document.getElementById('resultContent');
         resultContent.innerHTML = '<div class="text-muted">Marking appointment as used...</div>';
 
@@ -145,9 +143,19 @@
             }
 
             document.getElementById('verificationCode').value = code;
-            await window.verifyCode({ preventDefault() {} });
+            await verifyCode({ preventDefault() {} });
         } catch (error) {
             resultContent.innerHTML = '<div class="alert alert-danger">Unable to mark the appointment as used.</div>';
         }
-    };
+    }
+
+    // Event delegation — handles the Verify form and the dynamically-inserted Mark as Used button
+    document.getElementById('verificationForm').addEventListener('submit', verifyCode);
+
+    document.getElementById('resultContent').addEventListener('click', function (e) {
+        const btn = e.target.closest('#markUsedBtn');
+        if (btn) showConfirmBox(btn.dataset.code);
+    });
 </script>
+
+@endsection

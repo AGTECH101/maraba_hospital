@@ -115,7 +115,7 @@
                                 <div class="bg-light p-3 rounded">
                                     <h6>Payment Summary</h6>
                                     <div class="summary-item"><span>Service</span><span id="paymentServiceAmount">₦0</span></div>
-                                    <div class="summary-item"><span>Service Charge</span><span id="paymentServiceFee">₦120</span></div>
+                                    <div class="summary-item"><span>Service Charge</span><span id="paymentServiceFee">₦320</span></div>
                                     <div class="summary-item fw-bold"><span>Total</span><span id="paymentTotal">₦0</span></div>
                                 </div>
                                 <div class="form-check mt-3">
