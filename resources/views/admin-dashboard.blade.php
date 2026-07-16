@@ -23,7 +23,7 @@
                         <a href="#" class="nav-link" data-tab="specializationsTab"><i class="bi bi-tags me-2"></i> Specializations</a>
                         <a href="#" class="nav-link" data-tab="transactionsTab"><i class="bi bi-credit-card me-2"></i> Transactions</a>
                         <a href="#" class="nav-link" data-tab="pendingApprovalsTab"><i class="bi bi-person-badge me-2"></i> Pending Approvals</a>
-                        <a href="#" class="nav-link"><i class="bi bi-box-arrow-left me-2"></i> Back to Home</a>
+                        <a href="/" class="nav-link"><i class="bi bi-box-arrow-left me-2"></i> Back to Home</a>
                     </div>
                 </div>
 

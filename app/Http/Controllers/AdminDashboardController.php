@@ -150,6 +150,7 @@ class AdminDashboardController extends Controller
         ]);
 
         $imagePath = $request->hasFile('image') ? $this->storeImageFile($request->file('image')) : null;
+        $validated['image'] = $imagePath; // ← ADD THIS LINE: replace the raw uploaded file object with the resolved URL
 
         $user = User::firstOrCreate(
             ['email' => $validated['email']],

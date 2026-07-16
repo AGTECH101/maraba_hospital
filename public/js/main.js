@@ -202,7 +202,7 @@ if (document.readyState === 'loading') {
             const bioHtml = s.bio && s.bio.trim().length > 0 ? `<div class="bio-text">${s.bio}</div>` : `<div class="bio-text empty-bio">No bio provided</div>`;
 
             const bigAvatarHtml = s.image
-                ? `<img src="${s.image}" alt="${s.name}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='<div class=&quot;staff-avatar mx-auto&quot; style=&quot;width:80px;height:80px;font-size:32px;&quot;>${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>'">`
+                ? `<img src="${s.image}" alt="${s.name}" style="width:80px;height:80px;border-radius:16px;object-fit:cover;" onerror="this.outerHTML='<div class=&quot;staff-avatar mx-auto&quot; style=&quot;width:80px;height:80px;font-size:32px;&quot;>${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>'">`
                 : `<div class="staff-avatar mx-auto" style="width:80px;height:80px;font-size:32px;">${String(s.name || '').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>`;
 
             document.getElementById('staffDetailBody').innerHTML = `
@@ -260,6 +260,7 @@ if (document.readyState === 'loading') {
         window.saveEditedStaff = function() {
             const id = document.getElementById('editStaffId').value;
             const formData = new FormData();
+            formData.append('_method', 'PATCH');   // ← ADD THIS LINE
             formData.append('name', document.getElementById('editStaffName').value.trim());
             formData.append('email', document.getElementById('editStaffEmail').value.trim());
             formData.append('phone', document.getElementById('editStaffContact').value.trim());
@@ -278,7 +279,7 @@ if (document.readyState === 'loading') {
                 return;
             }
             fetch(`/api/dashboard/staff/${id}`, {
-                method: 'PATCH',
+                method: 'POST',   // ← CHANGED from 'PATCH' to 'POST'
                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
                 body: formData
             }).then(res => res.json()).then(() => {
@@ -1462,7 +1463,12 @@ tbody.innerHTML += `<tr>
                     document.getElementById('profileEmail').innerText = staffProfile.email;
                     document.getElementById('profileContact').innerText = staffProfile.phone || 'N/A';
                     document.getElementById('profileDept').innerText = staffProfile.specialty || 'General';
-                    document.getElementById('profileAvatar').innerText = staffProfile.name.split(' ').map(n => n[0]).join('');
+                    const profileAvatarEl = document.getElementById('profileAvatar');
+                    if (staffProfile.image) {
+                        profileAvatarEl.innerHTML = `<img src="${staffProfile.image}" alt="${staffProfile.name}" class="profile-avatar-img" onerror="this.parentElement.innerHTML='${staffProfile.name.split(' ').map(n => n[0]).join('')}'">`;
+                    } else {
+                        profileAvatarEl.innerText = staffProfile.name.split(' ').map(n => n[0]).join('');
+                    }
                     document.getElementById('welcomeGreeting').innerText = 'Welcome, ' + staffProfile.name;
                     document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
                     renderBio(staffProfile.bio);
