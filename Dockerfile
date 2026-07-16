@@ -1,5 +1,6 @@
 # =========================================================
 # Stage 1: Install PHP (Composer) dependencies
+# docker build --build-arg VITE_API_URL=https://marabahospital.onrender.com -t test-build .
 # =========================================================
 FROM composer:2 AS vendor
 WORKDIR /app
@@ -17,11 +18,25 @@ RUN composer install \
 # =========================================================
 FROM node:20-alpine AS frontend
 WORKDIR /app
+
+# Vite inlines VITE_* vars at BUILD time, not runtime, and .env is
+# deliberately excluded from the build context — so pass them in
+# explicitly as build args (set these in Render's build settings
+# or via --build-arg when building locally).
+ARG VITE_APP_NAME
+ARG VITE_API_URL
+ENV VITE_APP_NAME=$VITE_APP_NAME
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY package*.json ./
 RUN npm ci
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 RUN npm run build
+
+# Fail the build loudly here instead of deploying a broken app silently
+RUN test -f public/build/manifest.json || test -f public/build/.vite/manifest.json \
+    || (echo "ERROR: Vite manifest.json not found — build produced no output" && exit 1)
 
 # =========================================================
 # Stage 3: Final runtime image (PHP-FPM + Nginx + Supervisor)
