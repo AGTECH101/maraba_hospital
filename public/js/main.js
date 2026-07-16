@@ -176,7 +176,7 @@ if (document.readyState === 'loading') {
                     : `<div class="staff-avatar">${initials}</div>`;
 
                 tbody.innerHTML += `<tr>
-                    <td><div class="staff-name">${avatarHtml}${s.name}</div></td>
+                    <td><div class="staff-name">${avatarHtml}<span class="name-text">${s.name}</span></div></td>
                     <td>${s.email}</td>
                     <td><span class="role-badge role-${s.role}">${s.role}</span></td>
                     <td>${formatCurrency(s.salary || 0)}</td>
