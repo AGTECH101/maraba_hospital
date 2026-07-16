@@ -885,18 +885,27 @@ tbody.innerHTML += `<tr>
             document.getElementById('summaryDate').textContent = booking.date ? new Date(booking.date).toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) : '-';
             document.getElementById('summaryTime').textContent = booking.time || '-';
             document.getElementById('summaryPatient').textContent = booking.patient.name || '-';
-            // Payment summary: service price + flat service charge (₦320)
+
+            // Estimated breakdown (mirrors MonnifyController's server-side formula).
+            // The REAL fee/VAT are confirmed by Monnify after payment and shown on the receipt.
             const service = services.find(s => String(s.id) === String(booking.service));
             const servicePrice = service ? Number(service.price || 0) : 0;
-            const serviceCharge = 320;
-            const total = servicePrice + serviceCharge;
+            const feeRate = 0.015;
+            const feeCap = 2000;
+            const vatRate = 0.075;
+            const estimatedFee = Math.min(Math.round(servicePrice * feeRate * 100) / 100, feeCap);
+            const estimatedVat = Math.round(estimatedFee * vatRate * 100) / 100;
+            const total = servicePrice + estimatedFee + estimatedVat;
             booking.amount = total;
-            const fmt = v => '₦' + Number(v || 0).toLocaleString();
+
+            const fmt = v => '₦' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const elService = document.getElementById('paymentServiceAmount');
             const elCharge = document.getElementById('paymentServiceFee');
+            const elVat = document.getElementById('paymentVat');
             const elTotal = document.getElementById('paymentTotal');
             if (elService) elService.textContent = fmt(servicePrice);
-            if (elCharge) elCharge.textContent = fmt(serviceCharge);
+            if (elCharge) elCharge.textContent = fmt(estimatedFee);
+            if (elVat) elVat.textContent = fmt(estimatedVat);
             if (elTotal) elTotal.textContent = fmt(total);
         }
 
@@ -1099,7 +1108,7 @@ tbody.innerHTML += `<tr>
             try {
                 const tx = data.transaction || {};
                 const appt = data.appointment || {};
-                const breakdown = data.breakdown || { service_amount: 0, service_charge: 0, total: tx.amount || 0 };
+                const breakdown = data.breakdown || { service_amount: 0, fee: 0, vat: 0, total: tx.amount || 0, breakdown_source: 'unknown' };
                 const container = document.getElementById('hiddenReceiptContainer') || document.getElementById('receiptContainer');
                 // render off-screen so it doesn't flash on the UI but is available to html2canvas
                 container.style.position = 'fixed';
@@ -1128,7 +1137,8 @@ tbody.innerHTML += `<tr>
                         <div>
                             <table style="width:100%;border-collapse:collapse">
                                 <tr><td>Service</td><td style="text-align:right">₦${Number(breakdown.service_amount).toLocaleString()}</td></tr>
-                                <tr><td>Service Charge</td><td style="text-align:right">₦${Number(breakdown.service_charge).toLocaleString()}</td></tr>
+                                <tr><td>Processing Fee</td><td style="text-align:right">₦${Number(breakdown.fee).toLocaleString()}</td></tr>
+                                <tr><td>VAT</td><td style="text-align:right">₦${Number(breakdown.vat).toLocaleString()}</td></tr>
                                 <tr style="font-weight:bold;border-top:1px solid #eee"><td style="text-align:right">Total</td><td style="text-align:right">₦${Number(breakdown.total).toLocaleString()}</td></tr>
                             </table>
                         </div>

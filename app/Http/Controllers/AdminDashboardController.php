@@ -105,7 +105,7 @@ class AdminDashboardController extends Controller
                 'staff' => $this->tableExists('staff_members') ? StaffMember::query()->count() : 0,
                 'transactions' => $this->tableExists('transactions') ? Transaction::query()->count() : 0,
             ],
-            'staff' => $this->tableExists('staff_members') ? StaffMember::query()->with('specializations')->latest()->get() : collect(),
+            'staff' => $this->tableExists('staff_members') ? StaffMember::query()->with(['specializations', 'appointments'])->latest()->get() : collect(),
             'appointments' => $this->tableExists('appointments') ? Appointment::query()->with(['service', 'staffMember', 'transaction'])->latest()->get() : collect(),
             'transactions' => $this->tableExists('transactions') ? Transaction::query()->with('appointment.service')->latest()->get() : collect(),
             'specializations' => $this->tableExists('specializations') ? Specialization::query()->with(['services', 'staffMembers'])->latest()->get() : collect(),
@@ -115,7 +115,7 @@ class AdminDashboardController extends Controller
     public function staff()
     {
         return response()->json([
-            'data' => $this->tableExists('staff_members') ? StaffMember::query()->with('specializations')->latest()->get() : collect(),
+            'data' => $this->tableExists('staff_members') ? StaffMember::query()->with(['specializations', 'appointments'])->latest()->get() : collect(),
         ]);
     }
 

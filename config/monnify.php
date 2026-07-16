@@ -60,4 +60,23 @@ return [
      * Base URL for Monnify live API.
      */
     'live_url' => env('MONNIFY_LIVE_URL', 'https://api.monnify.com'),
+    /**
+     * Subaccount code for the hospital (created via Monnify dashboard/API)
+     * so appointment fees settle directly to their bank account.
+     */
+    'hospital_subaccount_code' => env('MONNIFY_HOSPITAL_SUBACCOUNT_CODE'),
+
+    /**
+     * Nigerian statutory VAT rate applied on top of Monnify's fee.
+     */
+    'vat_rate' => (float) env('MONNIFY_VAT_RATE', 0.075),
+
+    /**
+     * Monnify's published transfer fee rate and cap, used to ESTIMATE
+     * the fee before payment (Monnify doesn't expose a universal
+     * pre-payment quote endpoint for every channel). The real fee is
+     * confirmed after payment via webhook/verify and overwrites this.
+     */
+    'transfer_fee_rate' => (float) env('MONNIFY_TRANSFER_FEE_RATE', 0.015),
+    'transfer_fee_cap' => (float) env('MONNIFY_TRANSFER_FEE_CAP', 2000),
 ];

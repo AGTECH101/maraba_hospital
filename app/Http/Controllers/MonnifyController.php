@@ -38,8 +38,18 @@ class MonnifyController extends Controller
             $userId = $user->id;
         }
 
-        $serviceCharge = 320;
-        $totalAmount = round((float) $service->price + $serviceCharge, 2);
+        $serviceAmount = round((float) $service->price, 2);
+        $estimatedFee = $this->estimateMonnifyFee($serviceAmount);
+        $estimatedVat = $this->calculateVat($estimatedFee);
+        $totalAmount = round($serviceAmount + $estimatedFee + $estimatedVat, 2);
+
+        $breakdown = [
+            'service_amount' => $serviceAmount,
+            'fee' => $estimatedFee,
+            'vat' => $estimatedVat,
+            'total' => $totalAmount,
+            'breakdown_source' => 'estimated', // becomes 'monnify_confirmed' after payment
+        ];
 
         $appointment = Appointment::create([
             ...$validated,
@@ -51,6 +61,7 @@ class MonnifyController extends Controller
 
         $paymentReference = 'PAY-' . strtoupper(Str::random(12));
         $redirectUrl = url('/monnify/return?paymentReference=' . $paymentReference);
+
         $payload = [
             'amount' => $totalAmount,
             'customerName' => $validated['patient_name'],
@@ -61,6 +72,17 @@ class MonnifyController extends Controller
             'contractCode' => config('monnify.contract_code'),
             'redirectUrl' => $redirectUrl,
         ];
+
+        if (config('monnify.hospital_subaccount_code')) {
+            $payload['incomeSplitConfig'] = [
+                [
+                    'subAccountCode' => config('monnify.hospital_subaccount_code'),
+                    'splitAmount' => $serviceAmount, // hospital gets exactly the appointment fee
+                    'feePercentage' => 0,
+                    'feeBearer' => false, // hospital's split should NOT be reduced by Monnify's fee
+                ],
+            ];
+        }
 
         try {
             $response = Monnify::transactions()->initialise($payload);
@@ -74,7 +96,7 @@ class MonnifyController extends Controller
                 'payment_method' => 'monnify',
                 'status' => 'pending',
                 'amount' => $totalAmount,
-                'meta' => ['error' => $e->getMessage(), 'redirect_url' => $redirectUrl],
+                'meta' => ['error' => $e->getMessage(), 'redirect_url' => $redirectUrl, 'breakdown' => $breakdown],
             ]);
 
             return response()->json([
@@ -82,6 +104,7 @@ class MonnifyController extends Controller
                 'payment_reference' => $paymentReference,
                 'appointment_id' => $appointment->id,
                 'status_url' => route('payment.status', ['paymentReference' => $paymentReference]),
+                'breakdown' => $breakdown,
             ], 503);
         }
 
@@ -95,7 +118,11 @@ class MonnifyController extends Controller
             'payment_method' => 'monnify',
             'status' => 'pending',
             'amount' => $totalAmount,
-            'meta' => array_merge($body, ['redirect_url' => $redirectUrl, 'init_response_status' => $response['status'] ?? null]),
+            'meta' => array_merge($body, [
+                'redirect_url' => $redirectUrl,
+                'init_response_status' => $response['status'] ?? null,
+                'breakdown' => $breakdown,
+            ]),
         ]);
 
         if (! $checkoutUrl) {
@@ -104,6 +131,7 @@ class MonnifyController extends Controller
                 'payment_reference' => $paymentReference,
                 'appointment_id' => $appointment->id,
                 'status_url' => route('payment.status', ['paymentReference' => $paymentReference]),
+                'breakdown' => $breakdown,
             ], 502);
         }
 
@@ -112,6 +140,7 @@ class MonnifyController extends Controller
             'payment_reference' => $paymentReference,
             'appointment_id' => $appointment->id,
             'status_url' => route('payment.status', ['paymentReference' => $paymentReference]),
+            'breakdown' => $breakdown,
         ]);
     }
 
@@ -119,20 +148,16 @@ class MonnifyController extends Controller
     {
         try {
             $tx = Transaction::with('appointment.service', 'appointment.staffMember')->findOrFail($transactionId);
-            $appt = $tx->appointment;
-
-            $amount = (float) $tx->amount;
-            $serviceCharge = 320;
-            $serviceAmount = max(0, round($amount - $serviceCharge, 2));
+            $breakdown = $this->resolveBreakdown($tx);
 
             $pdf = Pdf::loadView('receipt', [
                 'transaction' => $tx,
-                'appointment' => $appt,
-                'serviceAmount' => $serviceAmount,
-                'serviceCharge' => $serviceCharge,
+                'appointment' => $tx->appointment,
+                'serviceAmount' => $breakdown['service_amount'],
+                'fee' => $breakdown['fee'],
+                'vat' => $breakdown['vat'],
             ]);
 
-            // Basic DomPDF settings
             $pdf->setPaper('a4', 'portrait');
 
             return $pdf->download('receipt-' . $tx->invoice_number . '.pdf');
@@ -150,18 +175,16 @@ class MonnifyController extends Controller
                 ->orWhere('invoice_number', $reference)
                 ->firstOrFail();
 
-            $amount = (float) $tx->amount;
-            $serviceCharge = 320;
-            $serviceAmount = max(0, round($amount - $serviceCharge, 2));
+            $breakdown = $this->resolveBreakdown($tx);
 
             $pdf = Pdf::loadView('receipt', [
                 'transaction' => $tx,
                 'appointment' => $tx->appointment,
-                'serviceAmount' => $serviceAmount,
-                'serviceCharge' => $serviceCharge,
+                'serviceAmount' => $breakdown['service_amount'],
+                'fee' => $breakdown['fee'],
+                'vat' => $breakdown['vat'],
             ]);
 
-            // Basic DomPDF settings
             $pdf->setPaper('a4', 'portrait');
 
             return $pdf->download('receipt-' . $tx->invoice_number . '.pdf');
@@ -181,19 +204,11 @@ class MonnifyController extends Controller
             return response()->json(['message' => 'Transaction not found'], 404);
         }
 
-        $amount = (float) $tx->amount;
-        $serviceCharge = 320;
-        $serviceAmount = max(0, (int) round($amount - $serviceCharge));
-
         return response()->json([
             'data' => [
                 'transaction' => $tx,
                 'appointment' => $tx->appointment,
-                'breakdown' => [
-                    'service_amount' => $serviceAmount,
-                    'service_charge' => $serviceCharge,
-                    'total' => $amount,
-                ],
+                'breakdown' => $this->resolveBreakdown($tx),
             ],
         ]);
     }
@@ -236,6 +251,7 @@ class MonnifyController extends Controller
         $paymentStatus = null;
         $settlementStatus = null;
         $status = $tx->status ?? 'pending';
+        $breakdown = $tx->meta['breakdown'] ?? null;
 
         try {
             $result = Monnify::transactions()->statusByReference($paymentReference, 'payment');
@@ -252,8 +268,24 @@ class MonnifyController extends Controller
                 $tx->update(['status' => 'failed']);
             }
 
+            $realFee = isset($body['fee']) ? (float) $body['fee'] : null;
+
+            if ($realFee !== null && $status === 'paid') {
+                $vat = $this->calculateVat($realFee);
+                $serviceAmount = $breakdown['service_amount'] ?? round(((float) $tx->amount) - $realFee - $vat, 2);
+
+                $breakdown = [
+                    'service_amount' => $serviceAmount,
+                    'fee' => $realFee,
+                    'vat' => $vat,
+                    'total' => $tx->amount,
+                    'breakdown_source' => 'monnify_confirmed',
+                ];
+            }
+
             $tx->update([
                 'meta' => array_merge($tx->meta ?? [], [
+                    'breakdown' => $breakdown,
                     'last_status_check' => [
                         'paymentStatus' => $paymentStatus,
                         'settlementStatus' => $settlementStatus,
@@ -271,6 +303,7 @@ class MonnifyController extends Controller
             'status' => $status,
             'paymentStatus' => $paymentStatus,
             'settlementStatus' => $settlementStatus,
+            'breakdown' => $breakdown,
         ]);
     }
 
@@ -343,6 +376,37 @@ class MonnifyController extends Controller
         $appointment->update(['used_at' => now()]);
 
         return response()->json(['message' => 'Appointment marked as used.']);
+    }
+
+        protected function estimateMonnifyFee(float $amount): float
+    {
+        $fee = round($amount * config('monnify.transfer_fee_rate', 0.015), 2);
+        return min($fee, config('monnify.transfer_fee_cap', 2000));
+    }
+
+    protected function calculateVat(float $fee): float
+    {
+        return round($fee * config('monnify.vat_rate', 0.075), 2);
+    }
+
+    protected function resolveBreakdown(Transaction $tx): array
+    {
+        if (isset($tx->meta['breakdown'])) {
+            return $tx->meta['breakdown'];
+        }
+
+        // Fallback for older transactions created before this change
+        $amount = (float) $tx->amount;
+        $fee = $this->estimateMonnifyFee($amount);
+        $vat = $this->calculateVat($fee);
+
+        return [
+            'service_amount' => max(0, round($amount - $fee - $vat, 2)),
+            'fee' => $fee,
+            'vat' => $vat,
+            'total' => $amount,
+            'breakdown_source' => 'estimated_fallback',
+        ];
     }
 
     protected function resolveAppointment(string $code): ?Appointment

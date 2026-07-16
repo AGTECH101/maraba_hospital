@@ -113,10 +113,22 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="bg-light p-3 rounded">
-                                    <h6>Payment Summary</h6>
-                                    <div class="summary-item"><span>Service</span><span id="paymentServiceAmount">₦0</span></div>
-                                    <div class="summary-item"><span>Service Charge</span><span id="paymentServiceFee">₦320</span></div>
-                                    <div class="summary-item fw-bold"><span>Total</span><span id="paymentTotal">₦0</span></div>
+                                    <div class="summary-item">
+                                        <span>Service</span>
+                                        <span id="paymentServiceAmount">₦0.00</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span>Service Charge</span>
+                                        <span id="paymentServiceFee">₦0.00</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span>VAT</span>
+                                        <span id="paymentVat">₦0.00</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <strong>Total</strong>
+                                        <strong id="paymentTotal">₦0.00</strong>
+                                    </div>
                                 </div>
                                 <div class="form-check mt-3">
                                     <input class="form-check-input" type="checkbox" id="termsCheck" required>

@@ -20,14 +20,31 @@ class MonnifyWebhookController extends Controller
         $eventType = $request->input('eventType');
         $eventData = $request->input('eventData', []);
 
-        // quick response so Monnify doesn't resend while we process
         try {
             if ($eventType === 'SUCCESSFUL_TRANSACTION') {
                 $txRef = $eventData['transactionReference'] ?? ($eventData['paymentReference'] ?? null);
                 if ($txRef) {
                     $tx = Transaction::where('transaction_reference', $txRef)->first();
                     if ($tx) {
-                        $tx->update(['status' => 'paid', 'meta' => array_merge($tx->meta ?? [], $eventData)]);
+                        $meta = array_merge($tx->meta ?? [], $eventData);
+
+                        $realFee = isset($eventData['fee']) ? (float) $eventData['fee'] : null;
+                        if ($realFee !== null) {
+                            $vatRate = config('monnify.vat_rate', 0.075);
+                            $vat = round($realFee * $vatRate, 2);
+                            $serviceAmount = $meta['breakdown']['service_amount']
+                                ?? round(((float) $tx->amount) - $realFee - $vat, 2);
+
+                            $meta['breakdown'] = [
+                                'service_amount' => $serviceAmount,
+                                'fee' => $realFee,
+                                'vat' => $vat,
+                                'total' => $tx->amount,
+                                'breakdown_source' => 'monnify_confirmed',
+                            ];
+                        }
+
+                        $tx->update(['status' => 'paid', 'meta' => $meta]);
                         $appt = $tx->appointment;
                         if ($appt) $appt->update(['status' => 'confirmed']);
                     }
