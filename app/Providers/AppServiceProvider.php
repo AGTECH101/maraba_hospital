@@ -31,10 +31,13 @@ class AppServiceProvider extends ServiceProvider
                     'key' => env('CLOUDINARY_API_KEY'),
                     'secret' => env('CLOUDINARY_API_SECRET'),
                     'cloud' => env('CLOUDINARY_CLOUD_NAME'),
-                    'url' => env('CLOUDINARY_URL'),
                     'secure' => true,
                 ]]);
             }
         });
+
+        if (!$this->app->environment('local')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 }
