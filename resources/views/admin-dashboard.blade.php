@@ -323,7 +323,6 @@
                             <option value="doctor">Doctor</option>
                             <option value="technician">Lab Technician</option>
                             <option value="admin">Administrator</option>
-                            <option value="owner">Owner</option>
                         </select>
                     </div>
                     <div class="form-group mb-3">
