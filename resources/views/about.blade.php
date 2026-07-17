@@ -13,21 +13,21 @@
                 <div class="col-lg-6 wow fadeIn" data-wow-delay="0.1s">
                     <div class="row g-0">
                         <div class="col-6">
-                            <img class="img-fluid" src="img/about-1.jpg">
+                            <img class="img-fluid" src="img/about-1.jpeg">
                         </div>
                         <div class="col-6">
-                            <img class="img-fluid" src="img/about-2.jpg">
+                            <img class="img-fluid" src="img/about-2.jpeg">
                         </div>
                         <div class="col-6">
-                            <img class="img-fluid" src="img/about-3.jpg">
+                            <img class="img-fluid" src="img/about-3.jpeg">
                         </div>
                         <div class="col-6">
                             <div class="bg-primary w-100 h-100 mt-n5 ms-n5 d-flex flex-column align-items-center justify-content-center">
-                                <div class="icon-box-light">
+                                <div class="icon-box-light mt-4">
                                     <i class="bi bi-award text-dark"></i>
                                 </div>
                                 <h1 class="display-1 text-white mb-0" data-toggle="counter-up">25</h1>
-                                <small class="fs-5 text-white">Years Experience</small>
+                                <small class="fs-5 text-white mb-4">Years Experience</small>
                             </div>
                         </div>
                     </div>
