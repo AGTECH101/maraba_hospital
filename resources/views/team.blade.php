@@ -20,7 +20,7 @@
                         <p class="mb-1">{{ $featured->specialty ?? $featured->role }}</p>
                         <p class="mb-5">{{ $featured->email }}</p>
                         <h3 class="mb-3">Biography</h3>
-                        <p class="mb-4">{{ $featured->bio ?: 'This team member is part of our growing network of professionals dedicated to providing trusted diagnostic care.' }}</p>
+                        <p class="mb-4">{{ $featured->bio ?? 'This team member is part of our growing network of professionals dedicated to providing trusted diagnostic care.' }}</p>
                         <div class="d-flex">
                             <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-facebook-f"></i></a>
                             <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-twitter"></i></a>

@@ -163,11 +163,13 @@
                     <p class="mb-1">{{ $owner->specialty ?? 'CEO & Founder' }}</p>
                     <p class="mb-5">Maraba Hospital, Abuja, Nigeria</p>
                     <h3 class="mb-3">Biography</h3>
-                    <p class="mb-4">{{ $owner->bio ?: 'Biography coming soon.' }}</p>
-                        <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-facebook-f"></i></a>
-                        <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-twitter"></i></a>
-                        <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-linkedin-in"></i></a>
-                        <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-youtube"></i></a>
+                    <p class="mb-4">{{ $owner->bio ?? 'Biography coming soon.' }}</p>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-facebook-f"></i></a>
+                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-twitter"></i></a>
+                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-linkedin-in"></i></a>
+                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-youtube"></i></a>
+                        </div>
                     </div>
                 </div>
             </div>
