@@ -62,7 +62,7 @@
                     <div class="form-floating-custom">
                         <select class="form-control" id="role" name="role" required>
                             <option value="">Select your role</option>
-                            @foreach(($roles ?? ['doctor','technician','admin']) as $role)
+                            @foreach(($roles ?? ['owner','doctor','technician','admin']) as $role)
                                 <option value="{{ $role }}" {{ old('role') === $role ? 'selected' : '' }}>{{ ucfirst($role) }}</option>
                             @endforeach
                         </select>

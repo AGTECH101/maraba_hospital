@@ -156,16 +156,14 @@
         <div class="container pb-5">
             <div class="row g-5 align-items-center mb-5">
                 <div class="col-md-6 wow fadeIn" data-wow-delay="0.3s">
-                    <img class="img-fluid w-100" src="img/team-1.jpg" alt="">
+                    <img class="img-fluid w-100" src="{{ $owner->image ?? 'img/team-1.jpg' }}" alt="{{ $owner->name ?? 'Owner' }}">
                 </div>
                 <div class="col-md-6 wow fadeIn" data-wow-delay="0.5s">
-                    <h1 class="display-6 mb-3">Dr. John Martin <span class="badge bg-warning text-dark ms-2">Owner</span></h1>
-                    <p class="mb-1">CEO & Founder</p>
+                    <h1 class="display-6 mb-3">{{ $owner->name ?? 'Hospital Owner' }} <span class="badge bg-warning text-dark ms-2">Owner</span></h1>
+                    <p class="mb-1">{{ $owner->specialty ?? 'CEO & Founder' }}</p>
                     <p class="mb-5">Maraba Hospital, Abuja, Nigeria</p>
                     <h3 class="mb-3">Biography</h3>
-                    <p class="mb-4">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur tellus augue, iaculis id elit eget, ultrices pulvinar tortor. Quisque vel lorem porttitor, malesuada arcu quis, fringilla risus. Pellentesque eu consequat augue.</p>
-                    <p class="mb-4">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur tellus augue, iaculis id elit eget, ultrices pulvinar tortor. Quisque vel lorem porttitor, malesuada arcu quis, fringilla risus. Pellentesque eu consequat augue.</p>
-                    <div class="d-flex">
+                    <p class="mb-4">{{ $owner->bio ?: 'Biography coming soon.' }}</p>
                         <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-facebook-f"></i></a>
                         <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-twitter"></i></a>
                         <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-linkedin-in"></i></a>
@@ -180,11 +178,14 @@
                             <div class="position-relative overflow-hidden">
                                 <img class="img-fluid w-100" src="{{ $s->image ?? 'img/team-2.jpg' }}" alt="{{ $s->name }}">
                                 <div class="team-social">
-                                    <a class="btn btn-square btn-light mx-1" href="#"><i class="fab fa-facebook-f"></i></a>
+                                                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-facebook-f"></i></a>
+                                                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-twitter"></i></a>
+                                                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-linkedin-in"></i></a>
+                                                            <a class="btn btn-lg-square btn-primary me-2" href=""><i class="fab fa-youtube"></i></a>
                                 </div>
                             </div>
                             <div class="text-center p-4">
-                                <h5 class="mb-1">{{ $s->name }} @if(trim($s->name) === 'Dr. John Martin')<span class="badge bg-warning text-dark ms-2">Owner</span>@endif</h5>
+                                <h5 class="mb-1">{{ $s->name }} @if($s->role === 'owner')<span class="badge bg-warning text-dark ms-2">Owner</span>@endif</h5>
                                 <span>{{ ucfirst($s->role) }}</span>
                             </div>
                         </div>

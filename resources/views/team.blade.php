@@ -9,7 +9,7 @@
 <!-- Team Start -->
     <div class="container-fluid container-team py-5">
         <div class="container pb-5">
-            @php $featured = $staff->first(); @endphp
+            @php $featured = $owner; @endphp
             @if($featured)
                 <div class="row g-5 align-items-center mb-5">
                     <div class="col-md-6 wow fadeIn" data-wow-delay="0.3s">

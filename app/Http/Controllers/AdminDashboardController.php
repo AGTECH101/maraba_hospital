@@ -278,7 +278,7 @@ class AdminDashboardController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|string|in:patient,doctor,technician,admin,staff',
+            'role' => 'required|string|in:doctor,technician,admin,staff,owner',
             'password' => 'required|string|min:8',
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'is_approved' => 'nullable|boolean',

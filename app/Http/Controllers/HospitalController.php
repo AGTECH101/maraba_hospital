@@ -25,11 +25,15 @@ class HospitalController extends Controller
             ? Service::query()->where('is_active', true)->latest()->take(6)->get()
             : collect();
 
+        $owner = $this->tableExists('staff_members')
+            ? StaffMember::query()->where('role', 'owner')->latest()->first()
+            : null;
+
         $staff = $this->tableExists('staff_members')
             ? StaffMember::query()->where('role', 'doctor')->latest()->take(4)->get()
             : collect();
 
-        return view('index', ['services' => $services, 'staff' => $staff]);
+        return view('index', ['services' => $services, 'staff' => $staff, 'owner' => $owner]);
     }
 
     public function services()
@@ -57,11 +61,17 @@ class HospitalController extends Controller
 
     public function team()
     {
+        $owner = $this->tableExists('staff_members')
+            ? StaffMember::query()->where('role', 'owner')->latest()->first()
+            : null;
+
         $staff = $this->tableExists('staff_members')
-            ? StaffMember::query()->latest()->get()
+            ? StaffMember::query()->when($owner, function ($query) use ($owner) {
+                    return $query->where('id', '!=', $owner->id);
+                })->latest()->get()
             : collect();
 
-        return view('team', ['staff' => $staff]);
+        return view('team', ['staff' => $staff, 'owner' => $owner]);
     }
 
     public function appointment()
@@ -81,7 +91,7 @@ class HospitalController extends Controller
 
     public function dashboard()
     {
-        if (! Auth::check() || Auth::user()->role !== 'admin') {
+        if (! Auth::check() || ! in_array(Auth::user()->role, ['admin', 'owner'], true)) {
             abort(403);
         }
 

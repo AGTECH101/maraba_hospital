@@ -88,7 +88,7 @@ public function register(Request $request)
         'name' => 'required|string|max:255',
         'email' => 'required|email|unique:users,email',
         'phone' => 'nullable|string|max:20',
-        'role' => 'required|string|in:patient,doctor,technician,admin',
+        'role' => 'required|string|in:owner,doctor,technician,admin',
         'password' => 'required|string|min:8|confirmed',
         'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
     ]);
@@ -153,7 +153,7 @@ public function register(Request $request)
 
         $request->session()->regenerate();
 
-        $redirectPath = $user->role === 'admin' ? '/admin-dashboard' : ($user->role === 'doctor' || $user->role === 'technician' ? '/staff-dashboard' : '/');
+        $redirectPath = in_array($user->role, ['admin', 'owner']) ? '/admin-dashboard' : ($user->role === 'doctor' || $user->role === 'technician' ? '/staff-dashboard' : '/');
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
