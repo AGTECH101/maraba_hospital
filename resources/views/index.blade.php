@@ -14,7 +14,7 @@
                             <div class="row justify-content-start">
                                 <div class="col-lg-7 text-start">
                                     <h1 class="display-1 text-white animated slideInRight mb-3">Award Winning Laboratory Center</h1>
-                                    <p class="mb-5 animated slideInRight">Experience comprehensive diagnostic testing with state-of-the-art technology and highly qualified medical professionals dedicated to your health and wellness at Maraba Hospital.</p>
+                                    <p class="mb-5 animated slideInRight">Experience comprehensive diagnostic testing with state-of-the-art technology and highly qualified medical professionals dedicated to your health and wellness at Maraba Charity Hospital.</p>
                                     <a href="" class="btn btn-primary py-3 px-5 animated slideInRight">Explore More</a>
                                 </div>
                             </div>
@@ -77,7 +77,7 @@
                 </div>
                 <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
                     <h1 class="display-6 mb-4">Trusted Lab Experts and Latest Lab Technologies</h1>
-                    <p class="mb-4">Maraba Hospital combines cutting-edge laboratory equipment with the expertise of our dedicated pathologists and technicians to deliver precise diagnostic results. With over 25 years of experience serving the Abuja community, we've earned the trust of thousands of patients and healthcare providers through our commitment to accuracy, reliability, and excellence.</p>
+                    <p class="mb-4">Maraba Charity Hospital combines cutting-edge laboratory equipment with the expertise of our dedicated pathologists and technicians to deliver precise diagnostic results. With over 25 years of experience serving the Abuja community, we've earned the trust of thousands of patients and healthcare providers through our commitment to accuracy, reliability, and excellence.</p>
                     <div class="row g-4 g-sm-5 justify-content-center">
                         <div class="col-sm-6">
                             <div class="about-fact btn-square flex-column rounded-circle bg-primary ms-sm-auto">
@@ -161,7 +161,7 @@
                 <div class="col-md-6 wow fadeIn" data-wow-delay="0.5s">
                     <h1 class="display-6 mb-3">{{ $owner->name ?? 'Hospital Owner' }} <span class="badge bg-warning text-dark ms-2">Owner</span></h1>
                     <p class="mb-1">{{ $owner->specialty ?? 'CEO & Founder' }}</p>
-                    <p class="mb-5">Maraba Hospital, Abuja, Nigeria</p>
+                    <p class="mb-5">Maraba Charity Hospital, Abuja, Nigeria</p>
                     <h3 class="mb-3">Biography</h3>
                     <p class="mb-4">{{ $owner->bio ?? 'Biography coming soon.' }}</p>
                         <div class="d-flex gap-2">

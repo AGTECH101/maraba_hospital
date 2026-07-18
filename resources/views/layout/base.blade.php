@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Maraba Hospital - @yield('page_title', 'Home Page')</title>
+    <title>Maraba Charity Hospital - @yield('page_title', 'Home Page')</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
@@ -74,7 +74,7 @@
                         <span>+012 345 6789</span>
                     </div>
                 </div>
-                <a href="/index" class="h1 text-white mb-0">Maraba <span class="text-dark">Hospital</span></a>
+                <a href="/index" class="h1 text-white mb-0">Maraba <span class="text-danger">Charity</span> <span class="text-dark">Hospital</span></a>
                 <div class="d-flex">
                     <i class="bi bi-envelope fs-2"></i>
                     <div class="ms-3">
@@ -160,9 +160,9 @@
             <div class="row g-5 py-5">
                 <div class="col-lg-6 pe-lg-5">
                     <a href="{{ route('home') }}" class="navbar-brand">
-                        <h1 class="h1 text-primary mb-0">Maraba <span class="text-white">Hospital</span></h1>
+                        <h1 class="h1 text-primary mb-0">Maraba <span class="text-danger">Charity</span> <span class="text-white">Hospital</span></h1>
                     </a>
-                    <p class="fs-5 mb-4">Maraba Hospital is a leading healthcare provider in Abuja, dedicated to delivering exceptional laboratory diagnostic services with the latest technology and most qualified medical professionals.</p>
+                    <p class="fs-5 mb-4">Maraba Charity Hospital is a leading healthcare provider in Abuja, dedicated to delivering exceptional laboratory diagnostic services with the latest technology and most qualified medical professionals.</p>
                     <p><i class="fa fa-map-marker-alt me-2"></i>123 Street, Abuja, Nigeria</p>
                     <p><i class="fa fa-phone-alt me-2"></i>+012 345 67890</p>
                     <p><i class="fa fa-envelope me-2"></i>info@example.com</p>
@@ -212,7 +212,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-6 text-center text-md-start">
-                    <p class="mb-0">&copy; <a href="#">Maraba Hospital</a>. All Rights Reserved.</p>
+                    <p class="mb-0">&copy; <a href="#">Maraba Charity Hospital</a>. All Rights Reserved.</p>
                 </div>
                 <div class="col-md-6 text-center text-md-end">
                     <!--/*** The author’s attribution link below must remain intact on your website. ***/-->
