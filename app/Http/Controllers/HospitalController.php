@@ -30,7 +30,9 @@ class HospitalController extends Controller
             : null;
 
         $staff = $this->tableExists('staff_members')
-            ? StaffMember::query()->where('role', 'doctor')->latest()->take(4)->get()
+            ? StaffMember::query()->when($owner, function ($query) use ($owner) {
+                    return $query->where('id', '!=', $owner->id);
+                })->latest()->take(4)->get()
             : collect();
 
         return view('index', ['services' => $services, 'staff' => $staff, 'owner' => $owner]);
@@ -244,5 +246,20 @@ class HospitalController extends Controller
             'message' => 'Message received. We will get back to you shortly.',
             'data' => $validated,
         ], 201);
+    }
+
+    public function about()
+    {
+        $owner = $this->tableExists('staff_members')
+            ? StaffMember::query()->where('role', 'owner')->latest()->first()
+            : null;
+
+        $staff = $this->tableExists('staff_members')
+            ? StaffMember::query()->when($owner, function ($query) use ($owner) {
+                    return $query->where('id', '!=', $owner->id);
+                })->latest()->take(4)->get()
+            : collect();
+
+        return view('about', ['owner' => $owner, 'staff' => $staff]);
     }
 }

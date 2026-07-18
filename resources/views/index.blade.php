@@ -173,7 +173,7 @@
                     </div>
                 </div>
             </div>
-            <div class="row g-4">
+            <div class="row g-4 m-4">
                 @forelse($staff as $s)
                     <div class="col-lg-3 col-md-6 wow fadeInUp">
                         <div class="team-item">
