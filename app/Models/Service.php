@@ -15,6 +15,7 @@ class Service extends Model
         'long_description',
         'icon',
         'price',
+        'category',
         'is_active',
     ];
 

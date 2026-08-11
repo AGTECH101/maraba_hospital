@@ -3,20 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\StaffMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
-use App\Models\StaffMember;
 
 class AuthController extends Controller
 {
+    // ===== IMAGE HELPERS (unchanged) =====
     protected function storeProfileImage($image): ?string
     {
         if (! $image || ! $image->isValid()) {
@@ -82,49 +82,51 @@ class AuthController extends Controller
         }
     }
 
-public function register(Request $request)
-{
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:users,email',
-        'phone' => 'nullable|string|max:20',
-        'role' => 'required|string|in:owner,doctor,technician,admin',
-        'password' => 'required|string|min:8|confirmed',
-        'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-    ]);
-
-    $imagePath = $request->hasFile('image') ? $this->storeProfileImage($request->file('image')) : null;
-
-    $user = User::create([
-        'name' => $validated['name'],
-        'email' => $validated['email'],
-        'phone' => $validated['phone'] ?? null,
-        'role' => $validated['role'],
-        'password' => Hash::make($validated['password']),
-        'is_approved' => false,
-        'image' => $imagePath,
-    ]);
-
-    if (in_array($user->role, ['doctor', 'technician', 'admin'], true)) {
-        StaffMember::create([
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'role' => $user->role,
+    // ===== REGISTER (patient/staff sign‑up) =====
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'role' => 'required|string|in:owner,doctor,technician,admin',
+            'password' => 'required|string|min:8|confirmed',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
+
+        $imagePath = $request->hasFile('image') ? $this->storeProfileImage($request->file('image')) : null;
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'role' => $validated['role'],
+            'password' => $validated['password'], // plain text – cast will hash
+            'is_approved' => false,
+            'image' => $imagePath,
+        ]);
+
+        if (in_array($user->role, ['doctor', 'technician', 'admin'], true)) {
+            StaffMember::create([
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'role' => $user->role,
+            ]);
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Account created successfully. Pending admin approval before you can sign in.',
+                'data' => $user->only(['id', 'name', 'email', 'role', 'is_approved', 'image']),
+            ], 201);
+        }
+
+        return redirect('/login')->with('status', 'Account created successfully. Pending admin approval before you can sign in.');
     }
 
-    if ($request->expectsJson() || $request->ajax()) {
-        return response()->json([
-            'message' => 'Account created successfully. Pending admin approval before you can sign in.',
-            'data' => $user->only(['id', 'name', 'email', 'role', 'is_approved', 'image']),
-        ], 201);
-    }
-
-    return redirect('/login')->with('status', 'Account created successfully. Pending admin approval before you can sign in.');
-}
-
+    // ===== LOGIN =====
     public function login(Request $request)
     {
         $validated = $request->validate([
@@ -165,6 +167,7 @@ public function register(Request $request)
         return redirect($redirectPath)->with('status', 'Signed in successfully.');
     }
 
+    // ===== LOGOUT =====
     public function logout(Request $request)
     {
         Auth::logout();
@@ -174,6 +177,7 @@ public function register(Request $request)
         return redirect()->route('login');
     }
 
+    // ===== FORGOT PASSWORD =====
     public function forgotPassword(Request $request)
     {
         $validated = $request->validate(['email' => 'required|email']);
@@ -217,6 +221,7 @@ public function register(Request $request)
         return back()->with('status', 'Please check your email for the password reset link.');
     }
 
+    // ===== RESET PASSWORD =====
     public function resetPassword(Request $request)
     {
         $validated = $request->validate([
@@ -228,7 +233,7 @@ public function register(Request $request)
         $status = Password::reset(
             ['email' => $validated['email'], 'token' => $validated['token'], 'password' => $validated['password']],
             function (User $user, $password) {
-                $user->password = $password;
+                $user->password = $password; // plain text – cast will hash
                 $user->setRememberToken(Str::random(60));
                 $user->save();
             }

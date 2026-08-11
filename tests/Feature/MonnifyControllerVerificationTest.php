@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\MonnifyController;
 use App\Models\Appointment;
+use App\Models\Service;
 use App\Models\Transaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -108,6 +109,40 @@ class MonnifyControllerVerificationTest extends TestCase
 
         $this->assertSame(200, $missingResponse->getStatusCode());
         $this->assertSame('invalid', json_decode($missingResponse->getContent(), true)['state']);
+    }
+
+    public function test_verify_response_contains_services_without_doctor_field(): void
+    {
+        $serviceOne = Service::create(['name' => 'General Consultation', 'slug' => 'general-consultation', 'description' => 'Consultation', 'price' => 5000]);
+        $serviceTwo = Service::create(['name' => 'Lab Test', 'slug' => 'lab-test', 'description' => 'Test', 'price' => 3000]);
+
+        $appointment = Appointment::create([
+            'patient_name' => 'Margaret Hamilton',
+            'patient_phone' => '+2348000000003',
+            'appointment_date' => now()->addDay()->toDateString(),
+            'appointment_time' => '15:00',
+            'status' => 'pending',
+            'confirmation_code' => 'APT-USED-001',
+            'amount' => 7000,
+            'service_ids' => [$serviceOne->id, $serviceTwo->id],
+        ]);
+
+        Transaction::create([
+            'appointment_id' => $appointment->id,
+            'transaction_reference' => 'REF-USED-001',
+            'invoice_number' => 'INV-USED-001',
+            'status' => 'paid',
+            'amount' => 7000,
+        ]);
+
+        $controller = new MonnifyController();
+        $request = Request::create('/api/verification/appointment', 'POST', ['code' => 'APT-USED-001']);
+        $response = $controller->verifyAppointment($request);
+
+        $payload = json_decode($response->getContent(), true);
+        $this->assertSame(['General Consultation', 'Lab Test'], $payload['appointment']['services']);
+        $this->assertSame('General Consultation, Lab Test', $payload['appointment']['service']);
+        $this->assertArrayNotHasKey('doctor', $payload['appointment']);
     }
 
     public function test_mark_used_endpoint_sets_used_state(): void

@@ -17,7 +17,8 @@ class MonnifyController extends Controller
     public function initiate(Request $request)
     {
         $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'service_ids' => 'required|array|min:1',
+            'service_ids.*' => 'required|exists:services,id',
             'staff_member_id' => 'nullable|exists:staff_members,id',
             'patient_name' => 'required|string|max:255',
             'patient_email' => 'nullable|email',
@@ -27,7 +28,11 @@ class MonnifyController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $service = Service::findOrFail($validated['service_id']);
+        $services = Service::whereIntegerInRaw('id', $validated['service_ids'])->get();
+        $serviceAmount = round($services->sum('price'), 2);
+        $estimatedFee = $this->estimateMonnifyFee($serviceAmount);
+        $estimatedVat = $this->calculateVat($estimatedFee);
+        $totalAmount = round($serviceAmount + $estimatedFee + $estimatedVat, 2);
 
         $userId = null;
         if (! empty($validated['patient_email'])) {
@@ -38,11 +43,6 @@ class MonnifyController extends Controller
             $userId = $user->id;
         }
 
-        $serviceAmount = round((float) $service->price, 2);
-        $estimatedFee = $this->estimateMonnifyFee($serviceAmount);
-        $estimatedVat = $this->calculateVat($estimatedFee);
-        $totalAmount = round($serviceAmount + $estimatedFee + $estimatedVat, 2);
-
         $breakdown = [
             'service_amount' => $serviceAmount,
             'fee' => $estimatedFee,
@@ -52,7 +52,15 @@ class MonnifyController extends Controller
         ];
 
         $appointment = Appointment::create([
-            ...$validated,
+            'service_id' => $validated['service_ids'][0] ?? null,
+            'service_ids' => $validated['service_ids'],
+            'staff_member_id' => $validated['staff_member_id'] ?? null,
+            'patient_name' => $validated['patient_name'],
+            'patient_email' => $validated['patient_email'] ?? null,
+            'patient_phone' => $validated['patient_phone'],
+            'appointment_date' => $validated['appointment_date'],
+            'appointment_time' => $validated['appointment_time'],
+            'notes' => $validated['notes'] ?? null,
             'user_id' => $userId,
             'confirmation_code' => 'APT-' . strtoupper(Str::random(8)),
             'amount' => $totalAmount,
@@ -149,13 +157,19 @@ class MonnifyController extends Controller
         try {
             $tx = Transaction::with('appointment.service', 'appointment.staffMember')->findOrFail($transactionId);
             $breakdown = $this->resolveBreakdown($tx);
+            $serviceAmount = (float) ($breakdown['service_amount'] ?? 0);
+            $fee = (float) ($breakdown['fee'] ?? 0);
+            $vat = (float) ($breakdown['vat'] ?? 0);
+            $totalAmount = (float) ($breakdown['total'] ?? $tx->amount ?? 0);
 
             $pdf = Pdf::loadView('receipt', [
                 'transaction' => $tx,
                 'appointment' => $tx->appointment,
-                'serviceAmount' => $breakdown['service_amount'],
-                'fee' => $breakdown['fee'],
-                'vat' => $breakdown['vat'],
+                'serviceAmount' => $serviceAmount,
+                'serviceCharge' => $fee + $vat,
+                'fee' => $fee,
+                'vat' => $vat,
+                'totalAmount' => $totalAmount,
             ]);
 
             $pdf->setPaper('a4', 'portrait');
@@ -176,13 +190,19 @@ class MonnifyController extends Controller
                 ->firstOrFail();
 
             $breakdown = $this->resolveBreakdown($tx);
+            $serviceAmount = (float) ($breakdown['service_amount'] ?? 0);
+            $fee = (float) ($breakdown['fee'] ?? 0);
+            $vat = (float) ($breakdown['vat'] ?? 0);
+            $totalAmount = (float) ($breakdown['total'] ?? $tx->amount ?? 0);
 
             $pdf = Pdf::loadView('receipt', [
                 'transaction' => $tx,
                 'appointment' => $tx->appointment,
-                'serviceAmount' => $breakdown['service_amount'],
-                'fee' => $breakdown['fee'],
-                'vat' => $breakdown['vat'],
+                'serviceAmount' => $serviceAmount,
+                'serviceCharge' => $fee + $vat,
+                'fee' => $fee,
+                'vat' => $vat,
+                'totalAmount' => $totalAmount,
             ]);
 
             $pdf->setPaper('a4', 'portrait');
@@ -335,6 +355,13 @@ class MonnifyController extends Controller
             $state = 'expired';
         }
 
+        $serviceNames = [];
+        if (! empty($appointment->service_ids) && is_array($appointment->service_ids)) {
+            $serviceNames = \App\Models\Service::whereIntegerInRaw('id', (array) $appointment->service_ids)->pluck('name')->toArray();
+        } elseif ($appointment->service) {
+            $serviceNames = [$appointment->service->name];
+        }
+
         return response()->json([
             'found' => true,
             'state' => $state,
@@ -346,8 +373,8 @@ class MonnifyController extends Controller
                 'appointment_date' => $appointment->appointment_date,
                 'appointment_time' => $appointment->appointment_time,
                 'status' => $appointment->status,
-                'service' => $appointment->service?->name,
-                'doctor' => $appointment->staffMember?->name,
+                'service' => count($serviceNames) ? implode(', ', $serviceNames) : null,
+                'services' => $serviceNames,
             ],
             'payment' => [
                 'status' => $transaction?->status ?? 'pending',

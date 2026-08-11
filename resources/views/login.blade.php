@@ -10,8 +10,8 @@
     <section class="auth-section">
         <div class="container">
             <div class="auth-card wow fadeInUp" data-wow-delay="0.1s">
-                <h2 class="auth-title">Sign In</h2>
-                <p class="auth-subtitle">Don't have an account? <a href="{{ route('signup') }}">Register here</a></p>
+                <h2 class="auth-title">Welcome Back</h2>
+                <p class="auth-subtitle">Sign in to manage appointments, review verification status, or continue your hospital access. Staff and admin accounts are reviewed before first login.</p>
 
                 @if(session('status'))
                     <div class="auth-feedback success">{{ session('status') }}</div>
@@ -66,7 +66,7 @@
                     </div>
 
                     <div class="auth-footer-links">
-                        New to Maraba Hospital? <a href="{{ route('signup') }}">Create an account</a>
+                        Need to reset your password? <a href="{{ route('password.reset.email') }}">Request a password reset</a>
                     </div>
                 </form>
             </div>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Service;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,6 +22,18 @@ class AppointmentFlowTest extends TestCase
                 '*' => ['id', 'name', 'slug', 'description']
             ]
         ]);
+    }
+
+    public function test_appointment_page_can_preselect_a_service_from_query_string(): void
+    {
+        $this->seed();
+
+        $service = Service::query()->first();
+
+        $response = $this->get('/appointment?service_id=' . $service->id);
+
+        $response->assertOk();
+        $response->assertSee('data-selected-service-id="' . $service->id . '"', false);
     }
 
     public function test_appointment_can_be_created_via_api(): void

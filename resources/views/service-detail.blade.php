@@ -40,7 +40,7 @@
                                     <h5><i class="bi bi-clock-history me-2"></i> Fast result turnaround</h5>
                                     <p class="mb-0 text-muted" style="font-size: 14px;">Reliable and confidential reporting</p>
                                 </div>
-                                <a href="{{ route('appointment') }}" class="btn btn-primary">Book a Test <i class="bi bi-arrow-right ms-1"></i></a>
+                                <a href="{{ route('appointment', ['service_id' => $service->id]) }}" class="btn btn-primary">Book This Service <i class="bi bi-arrow-right ms-1"></i></a>
                             </div>
                         </div>
                     </div>

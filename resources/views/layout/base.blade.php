@@ -71,7 +71,7 @@
                     <i class="bi bi-telephone-inbound fs-2"></i>
                     <div class="ms-3">
                         <h5 class="text-white mb-0">Call Now</h5>
-                        <span>+012 345 6789</span>
+                        <span>09038301317 <span style="color:red;">|</span> 08071112717</span>
                     </div>
                 </div>
                 <a href="/index" class="h1 text-white mb-0">Maraba <span class="text-danger">Charity</span> <span class="text-dark">Hospital</span></a>
@@ -92,8 +92,8 @@
     <div class="container-fluid sticky-top">
         <div class="container">
             <nav class="navbar navbar-expand-lg navbar-light bg-white py-lg-0 px-lg-3">
-                <a href="{{ route('home') }}" class="navbar-brand d-lg-none">
-                    <h1 class="text-primary m-0">Maraba <span class="text-dark">Hospital</span></h1>
+                <a href="{{ route('home') }}" class="navbar-brand d-lg-none w-100">
+                    <h1 class="text-primary m-0 text-wrap" style="white-space: normal;">Maraba <span class="text-danger">Charity</span> <span class="text-dark">Hospital</span></h1>
                 </a>
                 <button type="button" class="navbar-toggler me-0" data-bs-toggle="collapse"
                     data-bs-target="#navbarCollapse">
@@ -109,6 +109,7 @@
                             <div class="dropdown-menu bg-light m-0">
                                 <a href="{{ route('team') }}" class="dropdown-item">Our Team</a>
                                 <a href="{{ route('appointment') }}" class="dropdown-item">Appointment</a>
+                                <a href="{{ route('verification-portal') }}" class="dropdown-item">Verification Portal</a>
                                 <a href="/pages-directory" class="dropdown-item">Pages Directory</a>
                                 {{-- <a href="{{ route('admin-dashboard') }}" class="dropdown-item">Admin Dashboard</a>
                                 <a href="{{ route('staff-dashboard') }}" class="dropdown-item">Staff Dashboard</a> --}}
@@ -160,7 +161,7 @@
             <div class="row g-5 py-5">
                 <div class="col-lg-6 pe-lg-5">
                     <a href="{{ route('home') }}" class="navbar-brand">
-                        <h1 class="h1 text-primary mb-0">Maraba <span class="text-danger">Charity</span> <span class="text-white">Hospital</span></h1>
+                        <h4 class="h5 text-primary mb-0 text-wrap">Maraba <span class="text-danger">Charity</span> <span class="text-white">Hospital</span></h4>
                     </a>
                     <p class="fs-5 mb-4">Maraba Charity Hospital is a leading healthcare provider in Abuja, dedicated to delivering exceptional laboratory diagnostic services with the latest technology and most qualified medical professionals.</p>
                     <p><i class="fa fa-map-marker-alt me-2"></i>123 Street, Abuja, Nigeria</p>

@@ -49,6 +49,9 @@
                             </button>
                             <button class="btn btn-sm btn-outline-danger" onclick="clearBio()">
                                 <i class="bi bi-trash me-1"></i> Clear
+                            <button class="btn btn-sm btn-outline-secondary" onclick="openPasswordModal()">
+                            <i class="bi bi-key me-1"></i> Change Password
+                            </button>
                             </button>
                         </div>
                     </div>
@@ -193,5 +196,86 @@
             </div>
         </div>
     </div>
+
+<!-- ===== PASSWORD CHANGE MODAL ===== -->
+<div class="modal fade" id="passwordModal" tabindex="-1" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header bio-modal-header">
+<h5 class="modal-title"><i class="bi bi-key me-2"></i>Change Password</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<div class="form-group mb-3">
+<label for="currentPassword" class="form-label">Current Password</label>
+<input type="password" class="form-control" id="currentPassword" placeholder="Enter current password">
+</div>
+<div class="form-group mb-3">
+<label for="newPassword" class="form-label">New Password</label>
+<input type="password" class="form-control" id="newPassword" placeholder="Enter new password">
+</div>
+<div class="form-group mb-3">
+<label for="confirmPassword" class="form-label">Confirm New Password</label>
+<input type="password" class="form-control" id="confirmPassword" placeholder="Confirm new password">
+<small class="text-muted">Passwords must match and be at least 8 characters.</small>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+<button class="btn btn-staff" onclick="changePassword()"><i class="bi bi-save me-1"></i>Change Password</button>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+function openPasswordModal() {
+new bootstrap.Modal(document.getElementById('passwordModal')).show();
+}
+
+function changePassword() {
+const current = document.getElementById('currentPassword').value;
+const newPass = document.getElementById('newPassword').value;
+const confirm = document.getElementById('confirmPassword').value;
+
+if (!current || !newPass || !confirm) {
+alert('All fields are required.');
+return;
+}
+
+if (newPass !== confirm) {
+alert('Passwords do not match.');
+return;
+}
+
+if (newPass.length < 8) {
+alert('Password must be at least 8 characters.');
+return;
+}
+
+// Send to backend (you'll need to implement the API endpoint)
+fetch('/api/staff/change-password', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+},
+body: JSON.stringify({
+current_password: current,
+new_password: newPass
+})
+}).then(res => res.json()).then(data => {
+if (data.success) {
+alert('Password changed successfully.');
+bootstrap.Modal.getInstance(document.getElementById('passwordModal')).hide();
+document.getElementById('currentPassword').value = '';
+document.getElementById('newPassword').value = '';
+document.getElementById('confirmPassword').value = '';
+} else {
+alert(data.message || 'Failed to change password.');
+}
+}).catch(err => alert('Error: ' + err.message));
+}
+</script>
 
 @endsection

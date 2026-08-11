@@ -8,7 +8,7 @@
         <div class="container">
             <div class="auth-card wow fadeInUp" data-wow-delay="0.1s">
                 <h2 class="auth-title">Create New Password</h2>
-                <p class="auth-subtitle">Please enter your new password below.</p>
+                <p class="auth-subtitle">Choose a strong password to keep your account secure.</p>
 
                 @if(session('status'))
                     <div class="auth-feedback success">{{ session('status') }}</div>

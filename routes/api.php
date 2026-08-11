@@ -35,3 +35,4 @@ Route::get('/transactions/reference/{reference}', [App\Http\Controllers\MonnifyC
 Route::get('/transactions/reference/{reference}/receipt', [App\Http\Controllers\MonnifyController::class, 'downloadReceiptByReference']);
 Route::post('/verification/appointment', [App\Http\Controllers\MonnifyController::class, 'verifyAppointment']);
 Route::post('/verification/mark-used', [App\Http\Controllers\MonnifyController::class, 'markAppointmentUsed']);
+Route::middleware('auth')->post('/staff/change-password', [AdminDashboardController::class, 'changePassword']);

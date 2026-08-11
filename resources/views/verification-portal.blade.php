@@ -93,8 +93,7 @@
                     <p><span class="badge ${badgeClass}">${badgeLabel}</span></p>
                     <p><strong>Confirmation Code:</strong> ${data.appointment.confirmation_code}</p>
                     <p><strong>Patient:</strong> ${data.appointment.patient_name}</p>
-                    <p><strong>Service:</strong> ${data.appointment.service || 'N/A'}</p>
-                    <p><strong>Doctor:</strong> ${data.appointment.doctor || 'N/A'}</p>
+                    <p><strong>Services:</strong> ${data.appointment.service || 'N/A'}</p>
                     <p><strong>Date / Time:</strong> ${data.appointment.appointment_date || 'N/A'} ${data.appointment.appointment_time || ''}</p>
                     <p><strong>Appointment Status:</strong> ${data.appointment.status}</p>
                     <p><strong>Payment Status:</strong> ${data.payment.status}</p>

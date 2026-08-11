@@ -234,6 +234,8 @@ if (document.readyState === 'loading') {
             document.getElementById('editStaffRole').value = staff.role;
             document.getElementById('editStaffSalary').value = staff.salary || 0;
             document.getElementById('editStaffBio').value = staff.bio || '';
+            // Clear previous password field
+            document.getElementById('editStaffPassword').value = '';
             const preview = document.getElementById('editStaffImagePreview');
             const imageInput = document.getElementById('editStaffImage');
             if (preview && imageInput) {
@@ -257,16 +259,27 @@ if (document.readyState === 'loading') {
             new bootstrap.Modal(document.getElementById('editStaffModal')).show();
         };
 
+        // ========== FIXED: saveEditedStaff (includes password) ==========
         window.saveEditedStaff = function() {
             const id = document.getElementById('editStaffId').value;
             const formData = new FormData();
-            formData.append('_method', 'PATCH');   // ← ADD THIS LINE
+            formData.append('_method', 'PATCH');
             formData.append('name', document.getElementById('editStaffName').value.trim());
             formData.append('email', document.getElementById('editStaffEmail').value.trim());
             formData.append('phone', document.getElementById('editStaffContact').value.trim());
             formData.append('role', document.getElementById('editStaffRole').value);
             formData.append('salary', document.getElementById('editStaffSalary').value);
             formData.append('bio', document.getElementById('editStaffBio').value.trim());
+            
+            // *** ADD PASSWORD (if filled) ***
+            const password = document.getElementById('editStaffPassword').value;
+            if (password) {
+                formData.append('password', password);
+                console.log('Password provided, will update.');
+            } else {
+                console.log('No password provided, keeping existing.');
+            }
+
             Array.from(document.getElementById('editStaffSpecializations')?.selectedOptions || []).forEach(option => {
                 formData.append('specialization_ids[]', option.value);
             });
@@ -278,16 +291,31 @@ if (document.readyState === 'loading') {
                 alert('Please fill all required fields');
                 return;
             }
+
+            console.log('Sending update for staff ID:', id);
             fetch(`/api/dashboard/staff/${id}`, {
-                method: 'POST',   // ← CHANGED from 'PATCH' to 'POST'
+                method: 'POST',
                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
                 body: formData
-            }).then(res => res.json()).then(() => {
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Update response:', data);
+                if (data.message) {
+                    alert(data.message + (data.user?.password ? ' (Password hash updated)' : ''));
+                } else {
+                    alert('Staff updated successfully.');
+                }
                 loadDashboardData();
                 bootstrap.Modal.getInstance(document.getElementById('editStaffModal')).hide();
-            }).catch(() => alert('Unable to update staff member.'));
+            })
+            .catch(err => {
+                alert('Unable to update staff member. Check console for details.');
+                console.error('Update error:', err);
+            });
         };
 
+        // ========== FIXED: addNewStaff (includes password) ==========
         window.addNewStaff = function() {
             const formData = new FormData();
             formData.append('name', document.getElementById('newStaffName').value.trim());
@@ -296,6 +324,16 @@ if (document.readyState === 'loading') {
             formData.append('role', document.getElementById('newStaffRole').value);
             formData.append('salary', document.getElementById('newStaffSalary').value);
             formData.append('bio', document.getElementById('newStaffBio').value.trim());
+            
+            // *** ADD PASSWORD (use value from input, fallback to default) ***
+            const password = document.getElementById('newStaffPassword').value;
+            if (password) {
+                formData.append('password', password);
+            } else {
+                formData.append('password', 'mbh_password123'); // fallback
+            }
+            console.log('Adding staff with password length:', formData.get('password').length);
+
             Array.from(document.getElementById('newStaffSpecializations')?.selectedOptions || []).forEach(option => {
                 formData.append('specialization_ids[]', option.value);
             });
@@ -307,15 +345,28 @@ if (document.readyState === 'loading') {
                 alert('Please fill all required fields');
                 return;
             }
+
             fetch('/api/dashboard/staff', {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
                 body: formData
-            }).then(res => res.json()).then(() => {
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Add staff response:', data);
+                if (data.message) {
+                    alert(data.message + (data.user?.password ? ' (Password hash saved)' : ''));
+                } else {
+                    alert('Staff added successfully.');
+                }
                 loadDashboardData();
                 bootstrap.Modal.getInstance(document.getElementById('addStaffModal')).hide();
                 document.querySelectorAll('#addStaffModal input, #addStaffModal select, #addStaffModal textarea').forEach(i => i.value = '');
-            }).catch(() => alert('Unable to add staff member.'));
+            })
+            .catch(err => {
+                alert('Unable to add staff member. Check console for details.');
+                console.error('Add staff error:', err);
+            });
         };
 
         window.previewAdminStaffImage = function(event, previewId) {
@@ -407,24 +458,6 @@ if (document.readyState === 'loading') {
                 bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
             })
             .catch(() => alert('Unable to create user'));
-        };
-
-        window.previewAdminStaffImage_OLD = function(event, previewId) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.getElementById(previewId);
-                const hiddenInput = previewId === 'newStaffImagePreview' ? document.getElementById('newStaffImage') : document.getElementById('editStaffImage');
-                if (preview) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                }
-                if (hiddenInput) {
-                    hiddenInput.value = e.target.result;
-                }
-            };
-            reader.readAsDataURL(file);
         };
 
         function renderAllSchedules() {
@@ -756,11 +789,24 @@ tbody.innerHTML += `<tr>
     if (document.getElementById('stepIndicator')) {
         let services = [];
         let staffMembers = [];
-        const timeSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
-
-        const booking = { service: null, patient: { name: '', email: '', phone: '', notes: '' }, doctor: null, date: '', time: '', confirmationCode: '' };
+        const booking = {
+            service_ids: [],
+            selectedServices: [],
+            patient: { name: '', email: '', phone: '', notes: '' },
+            date: '',
+            time: '',
+            confirmationCode: '',
+            amount: 0,
+        };
         let currentStep = 1;
-        const totalSteps = 6;
+        const totalSteps = 4;
+
+        // ----- Helper: truncate description -----
+        function truncateDescription(text, limit = 120) {
+            if (!text) return '';
+            if (text.length <= limit) return text;
+            return text.substring(0, limit) + '…';
+        }
 
         function getToday() { return new Date().toISOString().split('T')[0]; }
         function generateCode() {
@@ -771,7 +817,7 @@ tbody.innerHTML += `<tr>
         }
 
         function renderStepIndicator() {
-            const labels = ['Service', 'Details', 'Doctor', 'Date & Time', 'Review', 'Confirmation'];
+            const labels = ['Services', 'Details', 'Review', 'Confirmation'];
             let html = '';
             for (let i = 1; i <= totalSteps; i++) {
                 const isActive = i === currentStep, isCompleted = i < currentStep;
@@ -786,33 +832,134 @@ tbody.innerHTML += `<tr>
             document.querySelector(`.step-content[data-step="${step}"]`).classList.add('active');
             currentStep = step;
             renderStepIndicator();
-            if (step === 5) populateSummary();
-            if (step === 6) populateReceipt();
-            if (step === 3) renderDoctors();
-            if (step === 4) {
+            if (step === 3) populateSummary();
+            if (step === 4) populateReceipt();
+            if (step === 2) {
                 if (!document.getElementById('appointmentDate').value) document.getElementById('appointmentDate').value = getToday();
                 renderTimeSlots();
             }
         }
 
-        function renderServices() {
-            let html = '';
-            services.forEach(s => {
-                html += `<div class="col-lg-4 col-md-6"><div class="card service-card p-4 text-center" data-service="${s.id}"><i class="bi ${s.icon || 'bi-heart-pulse'} display-4 text-primary"></i><h6 class="mt-3">${s.name}</h6><p class="text-muted small">${s.description}</p><small class="text-primary">₦${Number(s.price || 0).toLocaleString()}</small></div></div>`;
-            });
-            document.getElementById('serviceContainer').innerHTML = html;
-            document.getElementById('serviceContainer').querySelectorAll('.service-card').forEach(el => {
-                el.addEventListener('click', function() {
-                    document.getElementById('serviceContainer').querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-                    this.classList.add('selected');
-                    booking.service = this.dataset.service;
-                    document.querySelector('.step-content[data-step="1"] .next-step').disabled = false;
+        function updateSelectedServiceList() {
+            const container = document.getElementById('selectedServiceList');
+            if (!container) return;
+            if (booking.selectedServices.length === 0) {
+                container.innerHTML = '<div class="list-group-item text-muted">No services selected yet.</div>';
+                return;
+            }
+            container.innerHTML = booking.selectedServices.map(service => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${service.name}</strong>
+                        <div class="small text-muted">₦${Number(service.price).toLocaleString()}</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-service-btn" data-service-id="${service.id}"><i class="bi bi-trash"></i></button>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.remove-service-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const serviceId = Number(this.dataset.serviceId);
+                    const index = booking.service_ids.indexOf(serviceId);
+                    if (index !== -1) {
+                        booking.service_ids.splice(index, 1);
+                    }
+                    booking.selectedServices = services.filter(s => booking.service_ids.includes(s.id));
+                    updateSelectionState();
+                    updateSelectedServiceList();
+                    renderServices(services.filter(s => {
+                        const term = document.getElementById('serviceSearch')?.value.trim().toLowerCase() || '';
+                        const category = document.getElementById('categoryFilter')?.value || '';
+                        const text = `${s.name} ${s.description} ${s.category || ''} ${(s.specialization_names || []).join(' ')}`.toLowerCase();
+                        const matchesSearch = !term || text.includes(term);
+                        const matchesCategory = !category || (s.category || '').toLowerCase() === category.toLowerCase() || (s.specialization_names || []).includes(category);
+                        return matchesSearch && matchesCategory;
+                    }));
                 });
             });
         }
 
+        function updateSelectionState() {
+            document.querySelectorAll('.service-card').forEach(card => {
+                const serviceId = Number(card.dataset.service);
+                card.classList.toggle('selected', booking.service_ids.includes(serviceId));
+            });
+            document.querySelector('.step-content[data-step="1"] .next-step').disabled = booking.service_ids.length === 0;
+        }
+
+        // ===== renderServices with truncation =====
+        function renderServices(filtered = services) {
+            let html = '';
+            if (!filtered.length) {
+                html = '<div class="col-12"><div class="alert alert-light text-muted mb-0">No services match your search.</div></div>';
+            } else {
+                filtered.forEach(s => {
+                    const shortDesc = truncateDescription(s.description);
+                    html += `<div class="col-lg-4 col-md-6">
+                        <div class="card service-card p-4 text-center h-100" data-service="${s.id}">
+                            <i class="bi ${s.icon || 'bi-heart-pulse'} display-4 text-primary"></i>
+                            <h6 class="mt-3">${s.name}</h6>
+                            ${s.category ? `<div class="small text-muted mb-2">${s.category}</div>` : ''}
+                            <p class="text-muted small service-picker-desc">${shortDesc}</p>
+                            <small class="text-primary">₦${Number(s.price || 0).toLocaleString()}</small>
+                        </div>
+                    </div>`;
+                });
+            }
+            const container = document.getElementById('serviceContainer');
+            if (!container) return;
+            container.innerHTML = html;
+            container.querySelectorAll('.service-card').forEach(el => {
+                el.addEventListener('click', function() {
+                    const serviceId = Number(this.dataset.service);
+                    const index = booking.service_ids.indexOf(serviceId);
+                    if (index === -1) {
+                        booking.service_ids.push(serviceId);
+                    } else {
+                        booking.service_ids.splice(index, 1);
+                    }
+                    booking.selectedServices = services.filter(s => booking.service_ids.includes(s.id));
+                    updateSelectionState();
+                    updateSelectedServiceList();
+                });
+            });
+            updateSelectionState();
+            updateSelectedServiceList();
+        }
+
+        function filterServices() {
+            const term = document.getElementById('serviceSearch')?.value.trim().toLowerCase() || '';
+            const category = document.getElementById('categoryFilter')?.value || '';
+            const filtered = services.filter(s => {
+                const text = `${s.name} ${s.description} ${s.category || ''} ${(s.specialization_names || []).join(' ')}`.toLowerCase();
+                const matchesSearch = !term || text.includes(term);
+                const matchesCategory = !category || (s.category || '').toLowerCase() === category.toLowerCase() || (s.specialization_names || []).includes(category);
+                return matchesSearch && matchesCategory;
+            });
+            renderServices(filtered);
+        }
+
+        // ===== UPDATED: populate service categories =====
+        function populateServiceCategories() {
+            const filter = document.getElementById('categoryFilter');
+            if (!filter) return;
+            // Get unique categories from services (only non‑empty strings)
+            const categories = services
+                .map(s => s.category ? s.category.trim() : '')
+                .filter(cat => cat !== '')
+                .filter((value, index, self) => self.indexOf(value) === index) // unique
+                .sort((a, b) => a.localeCompare(b));
+            
+            // Build options
+            let options = '<option value="">All categories</option>';
+            categories.forEach(cat => {
+                options += `<option value="${cat}">${cat}</option>`;
+            });
+            filter.innerHTML = options;
+        }
+
         function renderDoctors() {
-            const serviceId = booking.service;
+            const serviceId = (Array.isArray(booking.service_ids) && booking.service_ids.length) ? booking.service_ids[0] : null;
             if (!serviceId) return;
             const selectedService = services.find(service => String(service.id) === String(serviceId));
             const specializationIds = Array.isArray(selectedService?.specialization_ids) ? selectedService.specialization_ids : [];
@@ -843,89 +990,75 @@ tbody.innerHTML += `<tr>
         function renderTimeSlots() {
             const selectedDate = document.getElementById('appointmentDate').value;
             if (!selectedDate) { document.getElementById('timeSlotContainer').innerHTML = '<p class="text-muted">Please select a date first.</p>'; return; }
-            const doctor = booking.doctor;
-            // determine which availability to use
-            let availability = null;
-            if (doctor && doctor.availability) availability = doctor.availability;
-            // default fallback
-            if (!availability) availability = { start: '09:00', end: '17:00', days: ['Mon','Tue','Wed','Thu','Fri'] };
-            const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-            const dayIndex = new Date(selectedDate).getDay();
-            const dayName = dayNames[dayIndex];
-            if (Array.isArray(availability.days) && availability.days.length > 0 && !availability.days.includes(dayName)) {
-                document.getElementById('timeSlotContainer').innerHTML = '<p class="text-muted">Selected doctor is not available on this date. Choose another date or doctor.</p>';
-                return;
-            }
-            // generate slots between availability.start and availability.end at 60-minute intervals
+            const availability = { start: '09:00', end: '17:00' };
             function toMinutes(t) { const [hh, mm] = t.split(':').map(Number); return hh * 60 + mm; }
             function formatSlot(mins) { const h = Math.floor(mins/60); const m = mins % 60; const ampm = h >= 12 ? 'PM' : 'AM'; let hr = h % 12; if (hr === 0) hr = 12; return `${String(hr).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`; }
-            const startMin = toMinutes(availability.start || '09:00');
-            const endMin = toMinutes(availability.end || '17:00');
-            const slotStep = 60; // minutes
+            const startMin = toMinutes(availability.start);
+            const endMin = toMinutes(availability.end);
+            const slotStep = 60;
             let html = '';
             for (let t = startMin; t + slotStep <= endMin; t += slotStep) {
                 const slotLabel = formatSlot(t);
-                html += `<div class="col-6 col-md-4"><div class="time-slot" data-time="${slotLabel}">${slotLabel}</div></div>`;
+                html += `<div class="col-6 col-md-4"><button type="button" class="btn btn-outline-secondary w-100 time-slot" data-time="${slotLabel}">${slotLabel}</button></div>`;
             }
             if (html === '') html = '<p class="text-muted">No time slots available for the selected date.</p>';
             document.getElementById('timeSlotContainer').innerHTML = html;
-            document.getElementById('timeSlotContainer').querySelectorAll('.time-slot').forEach(el => {
+            document.querySelectorAll('.time-slot').forEach(el => {
                 el.addEventListener('click', function() {
-                    document.getElementById('timeSlotContainer').querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
-                    this.classList.add('selected');
+                    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('active'));
+                    this.classList.add('active');
                     booking.time = this.dataset.time;
-                    document.querySelector('.step-content[data-step="4"] .next-step').disabled = false;
                 });
             });
         }
 
         function populateSummary() {
-            document.getElementById('summaryService').textContent = services.find(s => String(s.id) === String(booking.service))?.name || '-';
-            document.getElementById('summaryDoctor').textContent = booking.doctor?.name || '-';
+            const serviceList = document.getElementById('summaryServiceList');
+            if (serviceList) {
+                if (booking.selectedServices.length === 0) {
+                    serviceList.innerHTML = '<div class="text-muted">No services selected.</div>';
+                } else {
+                    serviceList.innerHTML = booking.selectedServices.map(s => `<div class="mb-2"><strong>${s.name}</strong> <span class="text-muted">₦${Number(s.price).toLocaleString()}</span></div>`).join('');
+                }
+            }
             document.getElementById('summaryDate').textContent = booking.date ? new Date(booking.date).toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) : '-';
             document.getElementById('summaryTime').textContent = booking.time || '-';
             document.getElementById('summaryPatient').textContent = booking.patient.name || '-';
 
-            // Estimated breakdown (mirrors MonnifyController's server-side formula).
-            // The REAL fee/VAT are confirmed by Monnify after payment and shown on the receipt.
-            const service = services.find(s => String(s.id) === String(booking.service));
-            const servicePrice = service ? Number(service.price || 0) : 0;
+            const serviceAmount = booking.selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
             const feeRate = 0.015;
             const feeCap = 2000;
             const vatRate = 0.075;
-            const estimatedFee = Math.min(Math.round(servicePrice * feeRate * 100) / 100, feeCap);
+            const estimatedFee = Math.min(Math.round(serviceAmount * feeRate * 100) / 100, feeCap);
             const estimatedVat = Math.round(estimatedFee * vatRate * 100) / 100;
-            const total = servicePrice + estimatedFee + estimatedVat;
+            const total = serviceAmount + estimatedFee + estimatedVat;
             booking.amount = total;
 
             const fmt = v => '₦' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const elService = document.getElementById('paymentServiceAmount');
-            const elCharge = document.getElementById('paymentServiceFee');
-            const elVat = document.getElementById('paymentVat');
-            const elTotal = document.getElementById('paymentTotal');
-            if (elService) elService.textContent = fmt(servicePrice);
-            if (elCharge) elCharge.textContent = fmt(estimatedFee);
-            if (elVat) elVat.textContent = fmt(estimatedVat);
-            if (elTotal) elTotal.textContent = fmt(total);
+            document.getElementById('paymentServiceAmount').textContent = fmt(serviceAmount);
+            document.getElementById('paymentServiceFee').textContent = fmt(estimatedFee);
+            document.getElementById('paymentVat').textContent = fmt(estimatedVat);
+            document.getElementById('paymentTotal').textContent = fmt(total);
         }
 
         function populateReceipt() {
             document.getElementById('receiptCode').textContent = booking.confirmationCode;
             document.getElementById('receiptDoctor').textContent = booking.doctor?.name || '-';
-            document.getElementById('receiptService').textContent = services.find(s => String(s.id) === String(booking.service))?.name || '-';
+            document.getElementById('receiptService').textContent = booking.selectedServices.length ? booking.selectedServices.map(s => s.name).join(', ') : '-';
             document.getElementById('receiptDate').textContent = booking.date ? new Date(booking.date).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) : '-';
             document.getElementById('receiptTime').textContent = booking.time || '-';
             document.getElementById('receiptPatient').textContent = booking.patient.name || '-';
             document.getElementById('receiptPhone').textContent = booking.patient.phone || '-';
-            // receipt amount from booking.amount if available
             const amountEl = document.getElementById('receiptAmount');
             if (amountEl) amountEl.textContent = '₦' + Number(booking.amount || 0).toLocaleString();
         }
 
         function validateStep(step) {
             switch(step) {
-                case 1: if (!booking.service) { alert('Please select a service.'); return false; } return true;
-                case 2:
+                case 1:
+                    if (!Array.isArray(booking.service_ids) || booking.service_ids.length === 0) { alert('Please select at least one service.'); return false; }
+                    return true;
+                case 2: {
                     const name = document.getElementById('patientName').value.trim();
                     const phone = document.getElementById('patientPhone').value.trim();
                     if (!name) { document.getElementById('patientName').classList.add('is-invalid'); return false; } else { document.getElementById('patientName').classList.remove('is-invalid'); }
@@ -935,15 +1068,17 @@ tbody.innerHTML += `<tr>
                     booking.patient.phone = phone;
                     booking.patient.notes = document.getElementById('patientNotes').value.trim();
                     return true;
-                case 3: if (!booking.doctor) { alert('Please select a doctor.'); return false; } return true;
-                case 4:
+                }
+                case 3: {
                     const date = document.getElementById('appointmentDate').value;
                     if (!date) { alert('Please select a date.'); return false; }
                     if (!booking.time) { alert('Please select a time slot.'); return false; }
                     booking.date = date;
                     return true;
-                case 5:
-                    if (!document.getElementById('termsCheck').checked) { alert('Please agree to the terms and conditions.'); return false; }
+                }
+                case 4:
+                    const termsEl = document.getElementById('termsCheck');
+                    if (termsEl && !termsEl.checked) { alert('Please agree to the terms and conditions.'); return false; }
                     return true;
                 default: return true;
             }
@@ -960,7 +1095,7 @@ tbody.innerHTML += `<tr>
                 const btn = e.target.closest('.next-step');
                 const stepEl = btn.closest('.step-content');
                 const step = parseInt(stepEl.dataset.step);
-                if (validateStep(step)) { goToStep(step === 4 ? 5 : step + 1); }
+                if (validateStep(step)) { goToStep(step + 1); }
             }
             if (e.target.closest('.prev-step')) {
                 const btn = e.target.closest('.prev-step');
@@ -969,48 +1104,57 @@ tbody.innerHTML += `<tr>
             }
         });
 
+        document.getElementById('serviceSearch')?.addEventListener('input', filterServices);
+        document.getElementById('categoryFilter')?.addEventListener('change', filterServices);
+
         document.addEventListener('change', function(e) {
             if (e.target.id === 'appointmentDate') { booking.date = e.target.value; renderTimeSlots(); }
         });
 
         document.getElementById('payBtn').addEventListener('click', function() {
-            if (!validateStep(5)) return;
+            if (!validateStep(4)) return;
             document.getElementById('paymentOverlay').classList.add('show');
+
+            const payload = {
+                service_ids: booking.service_ids,
+                patient_name: booking.patient.name,
+                patient_email: booking.patient.email,
+                patient_phone: booking.patient.phone,
+                appointment_date: booking.date,
+                appointment_time: booking.time,
+                notes: booking.patient.notes,
+            };
+
             fetch('/api/appointments/initiate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                body: JSON.stringify({
-                    service_id: booking.service,
-                    staff_member_id: booking.doctor?.id || null,
-                    patient_name: booking.patient.name,
-                    patient_email: booking.patient.email,
-                    patient_phone: booking.patient.phone,
-                    appointment_date: booking.date,
-                    appointment_time: booking.time,
-                    notes: booking.patient.notes,
-                })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(payload)
             })
-            .then(response => response.text().then(text => {
-                let data = null;
-                try { data = JSON.parse(text); } catch (e) { data = { __raw: text }; }
-                return { ok: response.ok, status: response.status, data, text };
-            }))
-            .then(({ ok, status, data, text }) => {
+            .then(response => {
+                // Always parse JSON, even for errors
+                return response.json().then(data => {
+                    if (!response.ok) {
+                        // Throw the server's message
+                        throw new Error(data.message || `Server error (${response.status})`);
+                    }
+                    return data;
+                }).catch(() => {
+                    // If response is not JSON
+                    throw new Error(`Server returned ${response.status} ${response.statusText}`);
+                });
+            })
+            .then(data => {
                 document.getElementById('paymentOverlay').classList.remove('show');
-                if (!ok) {
-                    const msg = (data && data.message) ? data.message : `Payment initiation failed (status ${status}).`;
-                    console.error('Payment initiation failed response:', text);
-                    alert(msg);
-                    return;
-                }
                 if (data && data.checkout_url) {
                     window.open(data.checkout_url, '_blank');
                     alert('A payment window has been opened. Complete payment and return to this page.');
 
-                    // start polling for transaction status by payment reference
                     const paymentRef = data.payment_reference;
                     let pollCount = 0;
-                    const pollMax = 60 * 5 / 3; // ~5 minutes at 3s intervals
+                    const pollMax = 60 * 5 / 3;
                     const pollInterval = setInterval(async () => {
                         pollCount++;
                         try {
@@ -1035,6 +1179,14 @@ tbody.innerHTML += `<tr>
                                         booking.date = appt.appointment_date || booking.date;
                                         booking.time = appt.appointment_time || booking.time;
                                         booking.doctor = appt.staff_member || booking.doctor;
+                                        if (Array.isArray(appt.service_names) && appt.service_names.length) {
+                                            booking.selectedServices = appt.service_names.map(name => ({ id: null, name }));
+                                        } else if (Array.isArray(appt.service_ids) && appt.service_ids.length) {
+                                            booking.selectedServices = appt.service_ids.map(id => {
+                                                const s = services.find(x => String(x.id) === String(id));
+                                                return s ? { id: s.id, name: s.name } : { id, name: String(id) };
+                                            });
+                                        }
                                     }
                                     renderReceiptContainer({ transaction: tx, appointment: appt, breakdown: json.data.breakdown });
                                     setTimeout(() => {
@@ -1054,18 +1206,20 @@ tbody.innerHTML += `<tr>
                         if (pollCount > pollMax) clearInterval(pollInterval);
                     }, 3000);
                 } else {
-                    console.error('Unexpected payment initiation response:', data, text);
-                    alert('Unable to start payment. Please try again or contact support.');
+                    // No checkout URL – show the server's message if any
+                    const msg = data.message || 'Unexpected response from server.';
+                    alert(msg);
+                    console.error('Payment initiation response:', data);
                 }
             })
             .catch(error => {
                 document.getElementById('paymentOverlay').classList.remove('show');
+                // Show the actual error message from the server
+                alert('Payment initiation failed:\n' + error.message);
                 console.error('Payment initiation error:', error);
-                alert('Payment initiation failed. Please try again.');
             });
         });
 
-        // downloadReceiptPNG(useHidden:Boolean) -> returns Promise
         window.downloadReceiptPNG = function(useHidden = false) {
             return new Promise((resolve, reject) => {
                 const receiptId = useHidden ? 'hiddenReceiptContainer' : 'receiptContainer';
@@ -1074,13 +1228,13 @@ tbody.innerHTML += `<tr>
                 if (typeof html2canvas === 'undefined') return reject(new Error('html2canvas not loaded'));
                 html2canvas(receipt, { scale: 2, backgroundColor: '#ffffff', logging: false, allowTaint: true, useCORS: true })
                 .then(canvas => {
-                    if (canvas.toBlob) {
+                                if (canvas.toBlob) {
                         canvas.toBlob(function(blob) {
                             try {
                                 const url = URL.createObjectURL(blob);
                                 const link = document.createElement('a');
                                 link.href = url;
-                                link.download = `Maraba-Hospital-Receipt-${booking.confirmationCode || Date.now()}.png`;
+                                            link.download = `Maraba-Charity-Hospital-Receipt-${booking.confirmationCode || Date.now()}.png`;
                                 document.body.appendChild(link);
                                 link.click();
                                 link.remove();
@@ -1093,7 +1247,7 @@ tbody.innerHTML += `<tr>
                             const dataUrl = canvas.toDataURL('image/png');
                             const link = document.createElement('a');
                             link.href = dataUrl;
-                            link.download = `Maraba-Hospital-Receipt-${booking.confirmationCode || Date.now()}.png`;
+                                        link.download = `Maraba-Charity-Hospital-Receipt-${booking.confirmationCode || Date.now()}.png`;
                             document.body.appendChild(link);
                             link.click();
                             link.remove();
@@ -1109,8 +1263,8 @@ tbody.innerHTML += `<tr>
                 const tx = data.transaction || {};
                 const appt = data.appointment || {};
                 const breakdown = data.breakdown || { service_amount: 0, fee: 0, vat: 0, total: tx.amount || 0, breakdown_source: 'unknown' };
+                const serviceDisplay = (Array.isArray(appt.service_names) && appt.service_names.length) ? appt.service_names.join(', ') : (Array.isArray(appt.service_ids) && appt.service_ids.length ? appt.service_ids.map(id => { const s = services.find(x => String(x.id) === String(id)); return s ? s.name : String(id); }).join(', ') : (appt.service?.name || booking.selectedServices.map(s => s.name).join(', ')));
                 const container = document.getElementById('hiddenReceiptContainer') || document.getElementById('receiptContainer');
-                // render off-screen so it doesn't flash on the UI but is available to html2canvas
                 container.style.position = 'fixed';
                 container.style.left = '-9999px';
                 container.style.top = '0';
@@ -1118,7 +1272,7 @@ tbody.innerHTML += `<tr>
                 container.innerHTML = `
                     <div style="width:800px;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#222;background:#fff;border:1px solid #eee;">
                         <div style="text-align:center;margin-bottom:12px">
-                            <h2 style="margin:0">Maraba Hospital</h2>
+                            <h2 style="margin:0">Maraba Charity Hospital</h2>
                             <div style="color:#666">Receipt</div>
                         </div>
                         <div style="margin-bottom:12px">
@@ -1130,7 +1284,7 @@ tbody.innerHTML += `<tr>
                             <div><strong>Patient:</strong> ${appt.patient_name || ''}</div>
                             <div><strong>Email:</strong> ${appt.patient_email || 'N/A'}</div>
                             <div><strong>Phone:</strong> ${appt.patient_phone || ''}</div>
-                            <div><strong>Service:</strong> ${appt.service?.name || ''}</div>
+                            <div><strong>Service(s):</strong> ${serviceDisplay || ''}</div>
                             <div><strong>Doctor:</strong> ${appt.staff_member?.name || ''}</div>
                             <div><strong>Date / Time:</strong> ${appt.appointment_date || ''} ${appt.appointment_time || ''}</div>
                         </div>
@@ -1151,8 +1305,7 @@ tbody.innerHTML += `<tr>
             } catch (err) { console.error('renderReceiptContainer error', err); }
         }
 
-                // fallback: show manual download prompt if auto-download may be blocked
-                function showReceiptManualPrompt() {
+        function showReceiptManualPrompt() {
                         if (typeof bootstrap === 'undefined') {
                                 alert('Receipt generated. Click the download button to save it.');
                                 return;
@@ -1182,6 +1335,16 @@ tbody.innerHTML += `<tr>
             .then(([serviceResult, staffResult]) => {
                 services = Array.isArray(serviceResult.data) ? serviceResult.data : [];
                 staffMembers = Array.isArray(staffResult.data) ? staffResult.data : [];
+                // Populate categories after services are loaded
+                populateServiceCategories();
+                const selectedServiceId = document.querySelector('[data-selected-service-id]')?.getAttribute('data-selected-service-id');
+                if (selectedServiceId) {
+                    const parsedId = Number(selectedServiceId);
+                    if (!Number.isNaN(parsedId) && services.some(service => Number(service.id) === parsedId)) {
+                        booking.service_ids = [parsedId];
+                        booking.selectedServices = services.filter(service => booking.service_ids.includes(Number(service.id)));
+                    }
+                }
                 renderServices();
                 renderStepIndicator();
                 showStep(1);
@@ -1503,4 +1666,3 @@ tbody.innerHTML += `<tr>
         document.addEventListener('DOMContentLoaded', loadStaffDashboard);
     }
 })();
-

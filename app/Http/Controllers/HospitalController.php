@@ -35,7 +35,11 @@ class HospitalController extends Controller
                 })->latest()->take(4)->get()
             : collect();
 
-        return view('index', ['services' => $services, 'staff' => $staff, 'owner' => $owner]);
+        $featuredService = $this->tableExists('services')
+            ? Service::query()->whereIn('slug', ['semen-analysis', 'hormonal-fertility-panel', 'beta-hcg-test'])->first()
+            : null;
+
+        return view('index', ['services' => $services, 'staff' => $staff, 'owner' => $owner, 'featuredService' => $featuredService]);
     }
 
     public function services()
@@ -76,7 +80,7 @@ class HospitalController extends Controller
         return view('team', ['staff' => $staff, 'owner' => $owner]);
     }
 
-    public function appointment()
+    public function appointment(Request $request)
     {
         $services = $this->tableExists('services')
             ? Service::query()->where('is_active', true)->get()
@@ -88,6 +92,7 @@ class HospitalController extends Controller
         return view('appointment', [
             'services' => $services,
             'staffMembers' => $staffMembers,
+            'selectedServiceId' => $request->query('service_id'),
         ]);
     }
 
@@ -201,7 +206,9 @@ class HospitalController extends Controller
                     'description' => $service->description,
                     'price' => (float) $service->price,
                     'icon' => $service->icon,
+                    'category' => $service->category ?? null,
                     'specialization_ids' => $service->specializations->pluck('id')->toArray(),
+                    'specialization_names' => $service->specializations->pluck('name')->toArray(),
                 ];
             })
             : collect();

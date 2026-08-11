@@ -10,8 +10,8 @@
     <section class="auth-section">
         <div class="container">
             <div class="auth-card wow fadeInUp" data-wow-delay="0.1s">
-                <h2 class="auth-title">Join Maraba Hospital</h2>
-                <p class="auth-subtitle">Already have an account? <a href="{{ route('login') }}">Sign in here</a></p>
+                <h2 class="auth-title">Create an Account</h2>
+                <p class="auth-subtitle">Register for patient access or staff onboarding. New staff and admin accounts require approval before they can sign in.</p>
 
                 @if(session('status'))
                     <div class="auth-feedback success">{{ session('status') }}</div>
@@ -62,7 +62,7 @@
                     <div class="form-floating-custom">
                         <select class="form-control" id="role" name="role" required>
                             <option value="">Select your role</option>
-                            @foreach(($roles ?? ['owner','doctor','technician','admin']) as $role)
+                            @foreach(($roles ?? ['patient','doctor','technician','admin']) as $role)
                                 <option value="{{ $role }}" {{ old('role') === $role ? 'selected' : '' }}>{{ ucfirst($role) }}</option>
                             @endforeach
                         </select>
@@ -114,6 +114,9 @@
 
                     <div class="auth-footer-links">
                         Already registered? <a href="{{ route('login') }}">Sign in to your account</a>
+                    </div>
+                    <div class="mt-3 small text-muted">
+                        Patients can book services immediately. Staff and admin accounts are reviewed by the hospital before access is enabled.
                     </div>
                 </form>
             </div>

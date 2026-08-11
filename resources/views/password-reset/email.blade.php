@@ -9,7 +9,7 @@
         <div class="container">
             <div class="auth-card wow fadeInUp" data-wow-delay="0.1s">
                 <h2 class="auth-title">Reset Your Password</h2>
-                <p class="auth-subtitle">Enter your email address and we'll send you a link to reset your password.</p>
+                <p class="auth-subtitle">Enter the email linked to your Maraba Charity Hospital account and we will send a secure reset link.</p>
 
                 @if(session('status'))
                     <div class="auth-feedback success">{{ session('status') }}</div>

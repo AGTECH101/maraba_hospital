@@ -84,6 +84,7 @@ class AdminDashboardController extends Controller
         }
     }
 
+    // ===== STATS & DATA =====
     public function stats()
     {
         return response()->json([
@@ -133,6 +134,8 @@ class AdminDashboardController extends Controller
         ]);
     }
 
+    // ===== STAFF MANAGEMENT =====
+
     public function storeStaff(Request $request)
     {
         $validated = $request->validate([
@@ -143,38 +146,68 @@ class AdminDashboardController extends Controller
             'salary' => 'nullable|numeric',
             'bio' => 'nullable|string',
             'specialty' => 'nullable|string',
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'password' => 'nullable|string|min:6',
+            'image' => ['nullable'],
             'availability' => 'nullable|array',
             'specialization_ids' => 'nullable|array',
             'specialization_ids.*' => 'exists:specializations,id',
         ]);
 
-        $imagePath = $request->hasFile('image') ? $this->storeImageFile($request->file('image')) : null;
-        $validated['image'] = $imagePath; // ← ADD THIS LINE: replace the raw uploaded file object with the resolved URL
+        // Handle image
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $this->storeImageFile($request->file('image'));
+        } elseif ($request->filled('image') && is_string($request->input('image')) && strpos($request->input('image'), 'data:image') === 0) {
+            $imagePath = $this->storeBase64Image($request->input('image'));
+        }
 
-        $user = User::firstOrCreate(
+        // Create or update the user – explicitly hash the password
+        $plainPassword = $validated['password'] ?? 'mbh_password123';
+        $hashedPassword = Hash::make($plainPassword);
+
+        $user = User::updateOrCreate(
             ['email' => $validated['email']],
             [
                 'name' => $validated['name'],
                 'phone' => $validated['phone'] ?? null,
                 'role' => $validated['role'],
-                'image' => $imagePath,
-                'password' => Hash::make('Password123!'),
                 'is_approved' => true,
+                'password' => $hashedPassword,
+                'image' => $imagePath,
             ]
         );
 
-        $staff = StaffMember::create([
-            ...$validated,
+        Log::info('StoreStaff: User created/updated', [
             'user_id' => $user->id,
-            'salary' => $validated['salary'] ?? 0,
+            'email' => $user->email,
+            'password_hash' => $user->password,
         ]);
+
+        // Build staff data
+        $staffData = [
+            'user_id' => $user->id,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'role' => $validated['role'],
+            'salary' => $validated['salary'] ?? 0,
+            'bio' => $validated['bio'] ?? null,
+            'specialty' => $validated['specialty'] ?? null,
+            'image' => $imagePath,
+            'availability' => $validated['availability'] ?? null,
+        ];
+
+        $staff = StaffMember::create($staffData);
 
         if (!empty($validated['specialization_ids'])) {
             $staff->specializations()->sync($validated['specialization_ids']);
         }
 
-        return response()->json(['message' => 'Staff member added.', 'data' => $staff->load('specializations')], 201);
+        return response()->json([
+            'message' => 'Staff member added.',
+            'data' => $staff->load('specializations'),
+            'user' => $user->only(['id', 'email', 'password']), // debug
+        ], 201);
     }
 
     public function updateStaff(Request $request, StaffMember $staffMember)
@@ -184,38 +217,103 @@ class AdminDashboardController extends Controller
             'email' => 'sometimes|required|email|unique:staff_members,email,' . $staffMember->id,
             'phone' => 'nullable|string|max:20',
             'role' => 'sometimes|required|string',
+            'password' => 'nullable|string|min:6',
             'salary' => 'nullable|numeric',
             'bio' => 'nullable|string',
             'specialty' => 'nullable|string',
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'image' => ['nullable'],
             'availability' => 'nullable|array',
             'specialization_ids' => 'nullable|array',
             'specialization_ids.*' => 'exists:specializations,id',
         ]);
 
-        $imagePath = $request->hasFile('image') ? $this->storeImageFile($request->file('image')) : null;
+        // Handle image
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $this->storeImageFile($request->file('image'));
+        } elseif ($request->filled('image') && is_string($request->input('image')) && strpos($request->input('image'), 'data:image') === 0) {
+            $imagePath = $this->storeBase64Image($request->input('image'));
+        }
+
+        // Build staff update data
+        $staffData = [];
+        $allowedFields = ['name', 'email', 'phone', 'role', 'salary', 'bio', 'specialty', 'availability'];
+        foreach ($allowedFields as $field) {
+            if (array_key_exists($field, $validated)) {
+                $staffData[$field] = $validated[$field];
+            }
+        }
         if ($imagePath) {
-            $validated['image'] = $imagePath;
+            $staffData['image'] = $imagePath;
         }
 
-        $staffMember->update($validated);
+        // Update staff record
+        $staffMember->update($staffData);
 
+        // Ensure a linked user exists
+        if (! $staffMember->user) {
+            Log::warning('Staff member has no linked user, creating one', ['staff_id' => $staffMember->id]);
+            $newUser = User::updateOrCreate(
+                ['email' => $staffMember->email],
+                [
+                    'name' => $staffMember->name,
+                    'phone' => $staffMember->phone,
+                    'role' => $staffMember->role,
+                    'is_approved' => true,
+                    'password' => Hash::make('mbh_password123'),
+                ]
+            );
+            $staffMember->update(['user_id' => $newUser->id]);
+            $staffMember->refresh();
+        }
+
+        // Now update the user
         if ($staffMember->user) {
-            $staffMember->user->update([
-                'name' => $validated['name'] ?? $staffMember->user->name,
-                'email' => $validated['email'] ?? $staffMember->user->email,
-                'phone' => $validated['phone'] ?? $staffMember->user->phone,
-                'role' => $validated['role'] ?? $staffMember->user->role,
-                'image' => $validated['image'] ?? $staffMember->user->image,
-                'is_approved' => true,
+            $user = $staffMember->user;
+
+            // Update basic info
+            $user->name = $validated['name'] ?? $user->name;
+            $user->email = $validated['email'] ?? $user->email;
+            $user->phone = $validated['phone'] ?? $user->phone;
+            $user->role = $validated['role'] ?? $user->role;
+            $user->image = $imagePath ?? $user->image;
+            $user->is_approved = true;
+
+            // If a new password is provided, hash and set it
+            if (!empty($validated['password'])) {
+                $plainPassword = $validated['password'];
+                $user->password = Hash::make($plainPassword);
+                Log::info('updateStaff: Setting new password hash', [
+                    'user_id' => $user->id,
+                    'plain' => '****',
+                    'hash' => $user->password,
+                ]);
+            } else {
+                Log::info('updateStaff: No password change provided', ['user_id' => $user->id]);
+            }
+
+            // Save the user
+            $user->save();
+
+            Log::info('updateStaff: User saved', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'password_hash' => $user->password,
             ]);
+        } else {
+            Log::error('updateStaff: No user found after ensuring existence', ['staff_id' => $staffMember->id]);
         }
 
+        // Sync specializations
         if (array_key_exists('specialization_ids', $validated)) {
             $staffMember->specializations()->sync($validated['specialization_ids']);
         }
 
-        return response()->json(['message' => 'Staff member updated.', 'data' => $staffMember->fresh()->load('specializations')]);
+        return response()->json([
+            'message' => 'Staff member updated.',
+            'data' => $staffMember->fresh()->load('specializations'),
+            'user' => $staffMember->user ? $staffMember->user->only(['id', 'email', 'password']) : null,
+        ]);
     }
 
     public function updateStaffBio(Request $request, StaffMember $staffMember)
@@ -251,6 +349,7 @@ class AdminDashboardController extends Controller
         return response()->json(['message' => 'Appointment status updated.', 'data' => $appointment->fresh()]);
     }
 
+    // ===== USER MANAGEMENT (pending approvals) =====
     public function pendingUsers()
     {
         $users = User::query()->where('is_approved', false)->latest()->get(['id', 'name', 'email', 'phone', 'created_at']);
@@ -280,12 +379,14 @@ class AdminDashboardController extends Controller
             'phone' => 'nullable|string|max:20',
             'role' => 'required|string|in:doctor,technician,admin,staff,owner',
             'password' => 'required|string|min:8',
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'image' => ['nullable'],
             'is_approved' => 'nullable|boolean',
         ]);
 
-        $imagePath = $request->hasFile('image') ? $this->storeImageFile($request->file('image')) : null;
-        if (! $imagePath && ! empty($validated['image']) && is_string($validated['image'])) {
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $this->storeImageFile($request->file('image'));
+        } elseif (!empty($validated['image']) && is_string($validated['image'])) {
             $imagePath = $this->storeBase64Image($validated['image']);
         }
 
@@ -315,6 +416,7 @@ class AdminDashboardController extends Controller
         ], 201);
     }
 
+    // ===== SPECIALIZATIONS =====
     public function indexSpecializations()
     {
         return response()->json([
@@ -365,5 +467,24 @@ class AdminDashboardController extends Controller
         $specialization->forceDelete();
 
         return response()->json(['message' => 'Specialization deleted.']);
+    }
+
+    // ===== PASSWORD CHANGE FOR STAFF (self-service) =====
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8',
+        ]);
+
+        $user = auth()->user();
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['success' => false, 'message' => 'Current password is incorrect.']);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
     }
 }

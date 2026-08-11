@@ -4,7 +4,7 @@
 
 @section('page_content')
 
-<x-banner message="Admin Control Pannel" page="Dashboard" />
+<x-banner message="Admin Control Panel" page="Dashboard" />
 
 <!-- ===== ADMIN AREA ===== -->
     <div class="admin-area">
@@ -22,7 +22,7 @@
                         <a href="#" class="nav-link" data-tab="manageAvailabilityTab"><i class="bi bi-clock-history me-2"></i> Manage Availability</a>
                         <a href="#" class="nav-link" data-tab="specializationsTab"><i class="bi bi-tags me-2"></i> Specializations</a>
                         <a href="#" class="nav-link" data-tab="transactionsTab"><i class="bi bi-credit-card me-2"></i> Transactions</a>
-                        <a href="#" class="nav-link" data-tab="pendingApprovalsTab"><i class="bi bi-person-badge me-2"></i> Pending Approvals</a>
+                        <!-- Pending approvals removed -->
                         <a href="/" class="nav-link"><i class="bi bi-box-arrow-left me-2"></i> Back to Home</a>
                     </div>
                 </div>
@@ -242,26 +242,6 @@
                         </div>
                     </div>
 
-                    <!-- ===== PENDING APPROVALS TAB ===== -->
-                    <div id="pendingApprovalsTab" class="content-card tab-content">
-                        <h5 class="mb-4"><i class="bi bi-person-check"></i> Pending User Approvals</h5>
-                        <div class="table-responsive">
-                            <table class="staff-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Phone</th>
-                                        <th>Signup Date</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="pendingUsersBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
                 </div><!-- /col-lg-9 -->
             </div><!-- /row -->
         </div><!-- /container -->
@@ -295,7 +275,7 @@
         </div>
     </div>
 
-    <!-- Add Staff Modal (with Bio) -->
+    <!-- Add Staff Modal (with Bio and Password) -->
     <div class="modal fade" id="addStaffModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -311,6 +291,12 @@
                     <div class="form-group mb-3">
                         <label>Email Address</label>
                         <input type="email" id="newStaffEmail" class="form-control" placeholder="e.g., john.doe@marabahospital.com">
+                    </div>
+                    <!-- Password field added -->
+                    <div class="form-group mb-3">
+                        <label>Password</label>
+                        <input type="text" id="newStaffPassword" class="form-control" value="mbh_password123">
+                        <small class="text-muted">Default password is provided; you can change it.</small>
                     </div>
                     <div class="form-group mb-3">
                         <label>Contact Number</label>
@@ -354,7 +340,7 @@
         </div>
     </div>
 
-    <!-- Edit Staff Modal (with Bio) -->
+    <!-- Edit Staff Modal (with Bio and optional Password) -->
     <div class="modal fade" id="editStaffModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -371,6 +357,12 @@
                     <div class="form-group mb-3">
                         <label>Email Address</label>
                         <input type="email" id="editStaffEmail" class="form-control" placeholder="Email">
+                    </div>
+                    <!-- Optional password field -->
+                    <div class="form-group mb-3">
+                        <label>Password (leave blank to keep current)</label>
+                        <input type="text" id="editStaffPassword" class="form-control" placeholder="New password (optional)">
+                        <small class="text-muted">Only fill if you want to change the password.</small>
                     </div>
                     <div class="form-group mb-3">
                         <label>Contact Number</label>
@@ -463,3 +455,100 @@
     </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    // ========== ADD STAFF ==========
+    function addNewStaff() {
+        const name = document.getElementById('newStaffName').value.trim();
+        const email = document.getElementById('newStaffEmail').value.trim();
+        const phone = document.getElementById('newStaffContact').value.trim();
+        const role = document.getElementById('newStaffRole').value;
+        const salary = document.getElementById('newStaffSalary').value;
+        const bio = document.getElementById('newStaffBio').value.trim();
+        const password = document.getElementById('newStaffPassword').value; // included
+        const imageData = document.getElementById('newStaffImage').value; // base64 or empty
+        const selectedSpecs = Array.from(document.getElementById('newStaffSpecializations').selectedOptions).map(opt => opt.value);
+
+        if (!name || !email || !role) {
+            alert('Please fill in Name, Email, and Role.');
+            return;
+        }
+
+        const payload = {
+            name, email, phone, role, salary, bio,
+            password: password, // always send, default is set in input
+            image: imageData || null,
+            specialization_ids: selectedSpecs
+        };
+
+        fetch('/api/dashboard/staff', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.message) {
+                alert(data.message);
+                bootstrap.Modal.getInstance(document.getElementById('addStaffModal')).hide();
+                loadStaffList();
+                // reset form fields if needed
+            } else {
+                alert('Error: ' + JSON.stringify(data));
+            }
+        })
+        .catch(err => alert('Request failed: ' + err.message));
+    }
+
+    // ========== EDIT STAFF ==========
+    function saveEditedStaff() {
+        const id = document.getElementById('editStaffId').value;
+        const name = document.getElementById('editStaffName').value.trim();
+        const email = document.getElementById('editStaffEmail').value.trim();
+        const phone = document.getElementById('editStaffContact').value.trim();
+        const role = document.getElementById('editStaffRole').value;
+        const salary = document.getElementById('editStaffSalary').value;
+        const bio = document.getElementById('editStaffBio').value.trim();
+        const password = document.getElementById('editStaffPassword').value; // optional
+        const imageData = document.getElementById('editStaffImage').value;
+        const selectedSpecs = Array.from(document.getElementById('editStaffSpecializations').selectedOptions).map(opt => opt.value);
+
+        if (!id) {
+            alert('No staff ID found.');
+            return;
+        }
+
+        const payload = { name, email, phone, role, salary, bio, image: imageData || null, specialization_ids: selectedSpecs };
+        if (password) {
+            payload.password = password;
+        }
+
+        fetch(`/api/dashboard/staff/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.message) {
+                alert(data.message);
+                bootstrap.Modal.getInstance(document.getElementById('editStaffModal')).hide();
+                loadStaffList();
+            } else {
+                alert('Error: ' + JSON.stringify(data));
+            }
+        })
+        .catch(err => alert('Request failed: ' + err.message));
+    }
+
+    // Additional functions (loadStaffList, etc.) remain unchanged
+    // ... (your existing JS code for loading tables, etc.)
+</script>
+@endpush

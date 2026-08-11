@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Service;
 
 class Appointment extends Model
 {
     protected $fillable = [
         'service_id',
+        'service_ids',
         'staff_member_id',
         'user_id',
         'patient_name',
@@ -26,6 +28,7 @@ class Appointment extends Model
 
     protected $casts = [
         'used_at' => 'datetime',
+        'service_ids' => 'array',
     ];
 
     public function user()
@@ -46,5 +49,10 @@ class Appointment extends Model
     public function transaction(): HasOne
     {
         return $this->hasOne(Transaction::class);
+    }
+
+    public function selectedServices()
+    {
+        return Service::query()->whereIn('id', $this->service_ids ?? [])->get();
     }
 }
