@@ -48,7 +48,7 @@
         <div class="container">
             <div class="d-flex justify-content-between">
                 <div>
-                    <small class="me-3"><i class="fa fa-map-marker-alt me-2"></i>123 Street, Abuja, Nigeria</small>
+                    <small class="me-3"><i class="fa fa-map-marker-alt me-2"></i>47 Sani Abacha Rd, New Karu 900101, Federal Capital Territory</small>
                     <small class="me-3"><i class="fa fa-clock me-2"></i>Mon-Sat 09am-5pm, Sun Closed</small>
                 </div>
                 <nav class="breadcrumb mb-0">
