@@ -213,7 +213,7 @@
     </div>
     <!-- Locate Us End -->
 
-    <!-- Gallery Start -->
+<!-- Gallery Start -->
 <div class="container-fluid py-5 bg-white">
     <div class="container">
         <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 600px;">
@@ -221,17 +221,17 @@
             <p class="mb-5">Take a look inside Maraba Charity Hospital – state-of-the-art equipment and a patient-friendly environment.</p>
         </div>
         <div class="row g-4">
-            <div class="col-lg-3 col-md-4 col-6 wow fadeInUp" data-wow-delay="0.1s">
-                <img src="{{ asset('img/gallery-1.jpeg') }}" class="gallery-img shadow"  style="object-fit: cover" class="img-fluid rounded shadow" alt="Gallery 1">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 wow fadeInUp" data-wow-delay="0.1s">
+                <img src="{{ asset('img/gallery-1.jpeg') }}" class="gallery-img shadow" alt="Gallery 1">
             </div>
-            <div class="col-lg-3 col-md-4 col-6 wow fadeInUp" data-wow-delay="0.2s">
-                <img src="{{ asset('img/gallery-2.jpeg') }}" class="gallery-img shadow"  style="object-fit: cover" class="img-fluid rounded shadow" alt="Gallery 2">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 wow fadeInUp" data-wow-delay="0.2s">
+                <img src="{{ asset('img/gallery-2.jpeg') }}" class="gallery-img shadow" alt="Gallery 2">
             </div>
-            <div class="col-lg-3 col-md-4 col-6 wow fadeInUp" data-wow-delay="0.3s">
-                <img src="{{ asset('img/gallery-3.jpeg') }}" class="gallery-img shadow"  style="object-fit: cover" class="img-fluid rounded shadow" alt="Gallery 3">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 wow fadeInUp" data-wow-delay="0.3s">
+                <img src="{{ asset('img/gallery-3.jpeg') }}" class="gallery-img shadow" alt="Gallery 3">
             </div>
-            <div class="col-lg-3 col-md-4 col-6 wow fadeInUp" data-wow-delay="0.4s">
-                <img src="{{ asset('img/gallery-4.jpeg') }}" class="gallery-img shadow"  style="object-fit: cover" class="img-fluid rounded shadow" alt="Gallery 4">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 wow fadeInUp" data-wow-delay="0.4s">
+                <img src="{{ asset('img/gallery-4.jpeg') }}" class="gallery-img shadow" alt="Gallery 4">
             </div>
         </div>
     </div>
@@ -240,10 +240,24 @@
 
 <style>
     .gallery-img {
-    width: 100%;
-    height: 350px;          /* Adjust this value as needed */
-    object-fit: cover;      /* Crops images to fill the container without distortion */
-    border-radius: 0.375rem; /* Match Bootstrap's rounded class */
+        width: 100%;
+        height: 350px;          /* Default height */
+        object-fit: cover;
+        border-radius: 0.375rem;
+    }
+
+    /* On small screens, reduce height for better mobile view */
+    @media (max-width: 576px) {
+        .gallery-img {
+            height: 350px;
+        }
+    }
+
+    /* On very small screens, you can make it even smaller if needed */
+    @media (max-width: 400px) {
+        .gallery-img {
+            height: 350px;
+        }
     }
 </style>
 
